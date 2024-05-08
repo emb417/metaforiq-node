@@ -1,0 +1,25 @@
+{
+  "name": "wccls-bot",
+  "version": "0.1.0",
+  "description": "a bot to interact with wccls website",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "nodemon --ignore 'db.json' server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "express": "^4.19.2",
+    "lowdb": "^7.0.1",
+    "node-cron": "^3.0.3",
+    "node-fetch": "^3.3.2",
+    "pino": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
