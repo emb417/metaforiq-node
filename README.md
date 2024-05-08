@@ -47,8 +47,11 @@ aka Libowski-bot, automating a couple frequent activities:
 
 ### Wish List
 
-1. wish list of keywords hard-coded in server.js and written to the db
-1. responses from scraping will be filtered by the wish list keyword is the item titles contain the keywords
+1. manage wish list of keywords through these endpoints
+    * `/wish-list`
+    * `/add-to-wish-list/:keywords`
+    * `/remove-from-wish-list/:keywords`
+1. responses from scraping will be filtered by the wish list keyword(s) in the item titles
 
 ### Scheduled Runs
 
