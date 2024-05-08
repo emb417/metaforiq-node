@@ -18,16 +18,14 @@ cron.schedule('*/15 10-17 * * *', () => {
   scrapeItems(availableConfig);
 });
 
-// Schedule the execution of onOrderHandler every day at noon
+// Schedule the execution of on order every day at noon
 cron.schedule('0 12 * * *', () => {
   scrapeItems(onOrderConfig);
 });
 
 // Set up database
 const db = await JSONFilePreset('db.json',{ libraryItems: [], wishListItems: [] });
-db.data.libraryItems = [];
-db.data.wishListItems = ['Barbie','Wonka'];
-await db.write();
+await db.read();
 
 // Scraper configs
 const availableConfig = {
@@ -47,8 +45,8 @@ const onOrderConfig = {
 const scrapeItems = async (config) => {
   try {
     logger.info(`scraping ${config.type} items...`);
-    logger.debug(`clearing ${db.data.libraryItems.length} ${config.type} items...`);
-    db.data.libraryItems = [];
+    logger.debug(`clearing ${db.data.libraryItems.filter(item => item.type === config.type).length} ${config.type} items...`);
+    db.data.libraryItems = db.data.libraryItems.filter(item => item.type !== config.type);
     await db.write();
 
     logger.debug(`getting ${config.type} items...`);
@@ -75,10 +73,9 @@ const scrapeItems = async (config) => {
       });
     }
     await db.write();
-    logger.debug(`${db.data.libraryItems.length} ${config.type} items saved.`);
+    logger.debug(`${db.data.libraryItems.filter(item => item.type === config.type).length} ${config.type} items saved.`);
 
     const filteredItems = db.data.libraryItems.filter(item => db.data.wishListItems.some(wishListItem => item.title.toLowerCase().includes(wishListItem.toLowerCase())));
-    logger.debug(`${filteredItems.length} wish list items ${config.type}.`);
     if (filteredItems.length === 0) {
         logger.info(`no wish list items ${config.type}.`);
       } else {
@@ -114,6 +111,22 @@ app.get('/on-order', async (req, res) => {
 
 app.get('/available-now', async (req, res) => {
   await itemsHandler(req, res, availableConfig);
+});
+
+app.get('/add-to-wish-list/:keywords', async (req, res) => {
+  db.data.wishListItems.push(req.params.keywords);
+  await db.write();
+  res.send(`Added ${req.params.keywords} to wish list.`);
+});
+
+app.get('/remove-from-wish-list/:keywords', async (req, res) => {
+  db.data.wishListItems = db.data.wishListItems.filter(item => item.toLowerCase() !== req.params.keywords.toLowerCase());
+  await db.write();
+  res.send(`Removed ${req.params.keywords} from wish list.`);
+});
+
+app.get('/wish-list', async (req, res) => {
+  res.send(db.data.wishListItems);
 });
 
 app.get('*', (req, res) => {
