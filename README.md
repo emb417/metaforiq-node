@@ -29,21 +29,21 @@ aka Libowski-bot, automating a couple frequent activities:
 
 1. nodejs - js runtime
 1. express - http server
-1. lowdb - database - https://github.com/typicode/lowdb
-1. pino - logger - https://github.com/pinojs/pino
-1. node-fetch - request lib - https://github.com/node-fetch/node-fetch/tree/2.x#readme
-1. cheerio - html parser - https://github.com/cheeriojs/cheerio
-1. node-cron - cron scheduler - https://github.com/node-cron/node-cron
+1. [lowdb](https://github.com/typicode/lowdb) - database
+1. [pino](https://github.com/pinojs/pino) - logger
+1. [node-fetch](https://github.com/node-fetch/node-fetch/tree/2.x#readme) - request lib
+1. [cheerio](https://github.com/cheeriojs/cheerio) - html parser
+1. [node-cron](https://github.com/node-cron/node-cron) - cron scheduler
 
 ## Primary Capabilities
 
 ### Find On-Order Blurays in past 7 days
 
-1. Scape items from "https://wccls.bibliocommons.com/v2/search?query=nw%3A%5B0%20TO%20180%5D&searchType=bl&sort=NEWLY_ACQUIRED&suppress=true&title_key=all_newly_acquired&f_FORMAT=BLURAY&f_ON_ORDER=true&f_NEWLY_ACQUIRED=PAST_7_DAYS"
+1. Scape items from [newly acquired page](https://wccls.bibliocommons.com/v2/search?query=nw%3A%5B0%20TO%20180%5D&searchType=bl&sort=NEWLY_ACQUIRED&suppress=true&title_key=all_newly_acquired&f_FORMAT=BLURAY&f_ON_ORDER=true&f_NEWLY_ACQUIRED=PAST_7_DAYS)
 
 ### Check for Now Available New Release Blurays
 
-1. Scrape ids from "https://wccls.bibliocommons.com/v2/search?custom_edit=false&query=anywhere%3A(%5B0%20TO%20180%5D)%20%20%20avlocation%3A%22Beaverton%20Murray%20Scholls%22%20formatcode%3A(BLURAY%20)&searchType=bl&suppress=true&f_STATUS=39&f_NEWLY_ACQUIRED=PAST_180_DAYS"
+1. Scrape ids from [now available page](https://wccls.bibliocommons.com/v2/search?custom_edit=false&query=anywhere%3A(%5B0%20TO%20180%5D)%20%20%20avlocation%3A%22Beaverton%20Murray%20Scholls%22%20formatcode%3A(BLURAY%20)&searchType=bl&suppress=true&f_STATUS=39&f_NEWLY_ACQUIRED=PAST_180_DAYS)
 
 ### Wish List
 
