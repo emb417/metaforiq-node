@@ -1,6 +1,6 @@
 {
   "name": "wccls-bot",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "a bot to interact with wccls website",
   "main": "server.js",
   "type": "module",
