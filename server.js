@@ -10,7 +10,13 @@ const port = 8008;
 
 // Set up logging
 const logger = pino({
-  level: process.env.LOG_LEVEL || 'info'
+  level: process.env.LOG_LEVEL || 'info',
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true
+    }
+  }
 });
 
 // Schedule the execution of available now every 15 minutes from 10:00am to 6:00pm
