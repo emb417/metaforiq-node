@@ -1,9 +1,11 @@
+import 'dotenv/config';
 import express from 'express';
 import fetch from 'node-fetch';
 import { load as cheerioLoad } from 'cheerio';
 import { JSONFilePreset } from 'lowdb/node'
 import pino from 'pino';
 import cron from 'node-cron';
+import nodemailer from 'nodemailer';
 
 const app = express();
 const port = 8008;
@@ -33,7 +35,38 @@ cron.schedule('0 12 * * *', () => {
 const db = await JSONFilePreset('db.json',{ libraryItems: [], wishListItems: [] });
 await db.read();
 
-// Scraper configs
+function sendEmail(message) {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      type: 'OAuth2',
+      user: process.env.MAIL_FROM,
+      pass: process.env.MAIL_PASSWORD,
+      clientId: process.env.OAUTH_CLIENTID,
+      clientSecret: process.env.OAUTH_CLIENT_SECRET,
+      refreshToken: process.env.OAUTH_REFRESH_TOKEN
+    }
+  });
+
+  let mailOptions = {
+    from: process.env.MAIL_FROM,
+    to: process.env.MAIL_TO,
+    subject: '',
+    text: ''
+  };
+
+  mailOptions = { ...mailOptions, ...message };
+
+  transporter.sendMail(mailOptions, function(err, data) {
+    if (err) {
+      logger.error(err);
+    } else {
+      logger.info("email sent.");
+    }
+  });
+}
+
+// Scraper utils
 const availableConfig = {
   type: 'available now',
   fetchUrl: 'https://wccls.bibliocommons.com/v2/search?custom_edit=false&query=anywhere%3A(%5B0%20TO%20180%5D)%20%20%20avlocation%3A%22Beaverton%20Murray%20Scholls%22%20formatcode%3A(BLURAY%20)&searchType=bl&suppress=true&f_STATUS=39&f_NEWLY_ACQUIRED=PAST_180_DAYS',
@@ -46,12 +79,15 @@ const onOrderConfig = {
   scriptValue: 'script[type="application/json"][data-iso-key="_0"]'
 };
 
+function filterItemsByType(type) {
+  return db.data.libraryItems.filter(item => item.type === type);
+}
 
 // Scraper
 const scrapeItems = async (config) => {
   try {
     logger.info(`scraping ${config.type} items...`);
-    logger.debug(`clearing ${db.data.libraryItems.filter(item => item.type === config.type).length} ${config.type} items...`);
+    logger.debug(`clearing ${filterItemsByType(config.type).length} ${config.type} items...`);
     db.data.libraryItems = db.data.libraryItems.filter(item => item.type !== config.type);
     await db.write();
 
@@ -79,17 +115,24 @@ const scrapeItems = async (config) => {
       });
     }
     await db.write();
-    logger.debug(`${db.data.libraryItems.filter(item => item.type === config.type).length} ${config.type} items saved.`);
+    logger.debug(`${filterItemsByType(config.type).length} ${config.type} items saved.`);
 
-    const filteredItems = db.data.libraryItems.filter(item => db.data.wishListItems.some(wishListItem => item.title.toLowerCase().includes(wishListItem.toLowerCase())));
-    if (filteredItems.length === 0) {
-        logger.info(`no wish list items ${config.type}.`);
-      } else {
-        logger.info(
-          `wish list items ${config.type}: ${filteredItems.map(item => item.title).join(', ')}.`
-        );
-      }
-    return filteredItems;
+    // filter items based on wish list and send email if there are any
+    const filteredWishListItems = filterItemsByType(config.type)
+      .filter(item => db.data.wishListItems.some(wishListItem => item.title.toLowerCase().includes(wishListItem.toLowerCase())));
+
+    logger.info(`found ${filteredWishListItems.length} wish list items ${config.type}.`);
+    if(filteredWishListItems.length !== 0){
+      logger.info(`sending email for ${filteredWishListItems.length} ${config.type} items...`);
+      const message = {
+        subject: `Alert: Wish List Items ${config.type}`,
+        text: `${filteredWishListItems.map(item => item.title).join(' :: ')}`,
+      };
+      logger.debug(message);
+      sendEmail(message);
+    }
+
+    return filteredWishListItems;
   } catch (error) {
     logger.error(error);
     throw new Error(`Server Error - Check Logs`);
@@ -142,5 +185,5 @@ app.get('*', (req, res) => {
 
 // Start server
 app.listen(port, () => {
-console.log(`Server listening at http://localhost:${port}`);
+logger.info(`server listening at http://localhost:${port}`);
 });
