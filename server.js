@@ -22,7 +22,7 @@ const logger = pino({
 });
 
 // Schedule the execution of available now every 15 minutes from 10:00am to 6:00pm
-cron.schedule('*/15 10-17 * * *', () => {
+cron.schedule('0,15,30,45 10-17 * * *', () => {
   scrapeItems(availableConfig);
 });
 
@@ -67,10 +67,21 @@ function sendEmail(message) {
 }
 
 // Scraper utils
+const locations = [
+  { code: 9, name: 'Beaverton City Library' },
+  { code: 29, name: 'Tigard Public Library' },
+  { code: 31, name: 'Tualatin Public Library' },
+  { code: 39, name: 'Beaverton Murray Scholls' }
+];
+
 const availableConfig = {
   type: 'available now',
-  fetchUrl: 'https://wccls.bibliocommons.com/v2/search?custom_edit=false&query=anywhere%3A(%5B0%20TO%20180%5D)%20%20%20avlocation%3A%22Beaverton%20Murray%20Scholls%22%20formatcode%3A(BLURAY%20)&searchType=bl&suppress=true&f_STATUS=39&f_NEWLY_ACQUIRED=PAST_180_DAYS',
+  fetchUrl: 'https://wccls.bibliocommons.com/v2/search?custom_edit=false&query=anywhere%3A(%5B0%20TO%20180%5D)%20%20%20avlocation%3A%22%5B*%20TO%20*%5D%22%20collection%3A%22Best%20Sellers%22%20formatcode%3A(BLURAY%20)&searchType=bl&suppress=true&f_STATUS=9%7C39%7C29%7C31&f_NEWLY_ACQUIRED=PAST_180_DAYS&locked=true',
   scriptValue: 'script[type="application/json"][data-iso-key="_0"]'
+};
+
+const availabilityUrl = (itemId) => {
+  return `https://gateway.bibliocommons.com/v2/libraries/wccls/bibs/${itemId}/availability?locale=en-US`;
 };
 
 const onOrderConfig = {
@@ -124,9 +135,25 @@ const scrapeItems = async (config) => {
     logger.info(`found ${filteredWishListItems.length} wish list items ${config.type}.`);
     if(filteredWishListItems.length !== 0){
       logger.info(`sending email for ${filteredWishListItems.length} ${config.type} items...`);
+      let messageText = [];
+
+      for (const item of filteredWishListItems) {
+        const response = await fetch(availabilityUrl(item.id));
+        const data = await response.text();
+        const bibItemsData = JSON.parse(data).entities.bibItems;
+        logger.trace(bibItemsData);
+
+        const availableBibItems = Object.values(bibItemsData).filter(bibItem => bibItem.availability.status === 'AVAILABLE');
+        const availableLocations = availableBibItems
+          .filter(bibItem => locations.some(location => location.name === bibItem.branch.name))
+          .map(bibItem => bibItem.branch.name);
+
+        messageText.push(`${item.title} is available at ${availableLocations.join(', ')}`);
+      }
+      logger.debug(messageText);
       const message = {
         subject: `Alert: Wish List Items ${config.type}`,
-        text: `${filteredWishListItems.map(item => item.title).join(' :: ')}`,
+        text: `${messageText.join('\n\n')}`,
       };
       logger.debug(message);
       sendEmail(message);
