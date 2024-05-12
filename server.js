@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
 import express from 'express';
 import fetch from 'node-fetch';
 import { load as cheerioLoad } from 'cheerio';
@@ -32,6 +34,13 @@ cron.schedule('0 12 * * *', () => {
 });
 
 // Set up database
+const __dirname = path.resolve();
+const dbPath = path.join(__dirname, 'db.json');
+
+if (!fs.existsSync(dbPath)) {
+  fs.writeFileSync(dbPath, '{ "libraryItems": [], "wishListItems": [] }');
+}
+
 const db = await JSONFilePreset('db.json',{ libraryItems: [], wishListItems: [] });
 await db.read();
 

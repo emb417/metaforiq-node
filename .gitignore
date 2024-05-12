@@ -7,5 +7,9 @@ node_modules
 # Ignore dotenv file
 .env
 
+# Ignore database file
+db.json
+
 # Ignore IDE specific files
 .vscode
+
