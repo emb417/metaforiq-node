@@ -137,22 +137,28 @@ const scrapeItems = async (config) => {
       logger.info(`sending email for ${filteredWishListItems.length} ${config.type} items...`);
       let messageText = [];
 
-      for (const item of filteredWishListItems) {
-        const response = await fetch(availabilityUrl(item.id));
-        const data = await response.text();
-        const bibItemsData = JSON.parse(data).entities.bibItems;
-        logger.trace(bibItemsData);
+      if(config.type === 'available now'){
+        for (const item of filteredWishListItems) {
+          const response = await fetch(availabilityUrl(item.id));
+          const data = await response.text();
+          const bibItemsData = JSON.parse(data).entities.bibItems;
+          logger.trace(bibItemsData);
 
-        const availableBibItems = Object.values(bibItemsData).filter(bibItem => bibItem.availability.status === 'AVAILABLE');
-        const availableLocations = availableBibItems
-          .filter(bibItem => locations.some(location => location.name === bibItem.branch.name))
-          .map(bibItem => bibItem.branch.name);
+          const availableBibItems = Object.values(bibItemsData).filter(bibItem => bibItem.availability.status === 'AVAILABLE');
+          const availableLocations = availableBibItems
+            .filter(bibItem => locations.some(location => location.name === bibItem.branch.name))
+            .map(bibItem => bibItem.branch.name);
 
-        const dbItem = db.data.libraryItems.find(libraryItem => libraryItem.id === item.id);
-        dbItem.locations = availableLocations;
-        await db.write();
+          const dbItem = db.data.libraryItems.find(libraryItem => libraryItem.id === item.id);
+          dbItem.locations = availableLocations;
+          await db.write();
 
-        messageText.push(`${item.title} is available at ${availableLocations.join(', ')}`);
+          messageText.push(`${item.title} is available at ${availableLocations.join(', ')}`);
+        }
+      } else if (config.type === 'on order'){
+        for (const item of filteredWishListItems) {
+          messageText.push(`${item.title} is on order: https://wccls.bibliocommons.com/v2/record/${item.id}`);
+        }
       }
       logger.debug(messageText);
       const message = {
