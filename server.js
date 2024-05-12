@@ -148,6 +148,10 @@ const scrapeItems = async (config) => {
           .filter(bibItem => locations.some(location => location.name === bibItem.branch.name))
           .map(bibItem => bibItem.branch.name);
 
+        const dbItem = db.data.libraryItems.find(libraryItem => libraryItem.id === item.id);
+        dbItem.locations = availableLocations;
+        await db.write();
+
         messageText.push(`${item.title} is available at ${availableLocations.join(', ')}`);
       }
       logger.debug(messageText);
