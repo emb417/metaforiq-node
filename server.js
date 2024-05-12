@@ -22,7 +22,7 @@ const logger = pino({
 });
 
 // Schedule the execution of available now every 15 minutes from 10:00am to 6:00pm
-cron.schedule('0,15,30,45 10-17 * * *', () => {
+cron.schedule('0,15,30,45 10-18 * * *', () => {
   scrapeItems(availableConfig);
 });
 
@@ -196,6 +196,7 @@ app.get('/add-to-wish-list/:keywords', async (req, res) => {
 });
 
 app.get('/remove-from-wish-list/:keywords', async (req, res) => {
+  // TODO add validation if item is not in wish list, possibly return list of items in wish list
   db.data.wishListItems = db.data.wishListItems.filter(item => item.toLowerCase() !== req.params.keywords.toLowerCase());
   await db.write();
   res.send(`Removed ${req.params.keywords} from wish list.`);
