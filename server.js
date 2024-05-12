@@ -41,7 +41,7 @@ if (!fs.existsSync(dbPath)) {
   fs.writeFileSync(dbPath, '{ "libraryItems": [], "wishListItems": [] }');
 }
 
-const db = await JSONFilePreset('db.json',{ libraryItems: [], wishListItems: [] });
+const db = await JSONFilePreset('db.json',{});
 await db.read();
 
 function sendEmail(message) {
