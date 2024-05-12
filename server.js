@@ -122,22 +122,23 @@ const scrapeItems = async (config) => {
         publicationDate: item.briefInfo.publicationDate,
         format: item.briefInfo.format,
         edition: item.briefInfo.edition,
-        description: item.briefInfo.description
+        description: item.briefInfo.description,
+        url: `https://wccls.bibliocommons.com/v2/record/${item.id}`
       });
     }
     await db.write();
     logger.debug(`${filterItemsByType(config.type).length} ${config.type} items saved.`);
+    let filteredWishListItems, messageText = [];
 
-    // filter items based on wish list and send email if there are any
-    const filteredWishListItems = filterItemsByType(config.type)
-      .filter(item => db.data.wishListItems.some(wishListItem => item.title.toLowerCase().includes(wishListItem.toLowerCase())));
+    if(config.type === 'available now'){
+      // filter items based on wish list and send email if there are any
+      filteredWishListItems = filterItemsByType(config.type)
+        .filter(item => db.data.wishListItems.some(wishListItem => item.title.toLowerCase().includes(wishListItem.toLowerCase())));
 
-    logger.info(`found ${filteredWishListItems.length} wish list items ${config.type}.`);
-    if(filteredWishListItems.length !== 0){
-      logger.info(`sending email for ${filteredWishListItems.length} ${config.type} items...`);
-      let messageText = [];
-
-      if(config.type === 'available now'){
+      logger.info(`found ${filteredWishListItems.length} wish list items ${config.type}.`);
+      if(filteredWishListItems.length !== 0){
+        logger.info(`sending email for ${filteredWishListItems.length} ${config.type} items...`);
+      
         for (const item of filteredWishListItems) {
           const response = await fetch(availabilityUrl(item.id));
           const data = await response.text();
@@ -153,23 +154,29 @@ const scrapeItems = async (config) => {
           dbItem.locations = availableLocations;
           await db.write();
 
-          messageText.push(`${item.title} is available at ${availableLocations.join(', ')}`);
-        }
-      } else if (config.type === 'on order'){
-        for (const item of filteredWishListItems) {
-          messageText.push(`${item.title} is on order: https://wccls.bibliocommons.com/v2/record/${item.id}`);
+          messageText.push(`${item.title} :: ${item.url} :: available at ${item.locations.join(', ')}`);
         }
       }
-      logger.debug(messageText);
+    }
+    else if (config.type === 'on order'){
+      for (const item of db.data.libraryItems.filter(libraryItem => libraryItem.type === 'on order')) {
+        messageText.push(`${item.title} :: ${item.url}`);
+      }
+    }
+
+    logger.debug(messageText);
+    if (messageText.length > 0) {
       const message = {
-        subject: `Alert: Wish List Items ${config.type}`,
+        subject: `Alert: ${config.type}`,
         text: `${messageText.join('\n\n')}`,
       };
       logger.debug(message);
       sendEmail(message);
     }
 
-    return filteredWishListItems;
+    return config.type === 'on order' 
+    ? db.data.libraryItems.filter(item => item.type === 'on order')
+    : filteredWishListItems;
   } catch (error) {
     logger.error(error);
     throw new Error(`Server Error - Check Logs`);
