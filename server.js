@@ -28,8 +28,8 @@ cron.schedule('0,15,30,45 10-18 * * *', () => {
   scrapeItems(availableConfig);
 });
 
-// Schedule the execution of on order every day at noon
-cron.schedule('0 12 * * *', () => {
+// Schedule the execution of on order every day at noon and 6pm
+cron.schedule('0 12,18 * * *', () => {
   scrapeItems(onOrderConfig);
 });
 
@@ -106,12 +106,7 @@ function filterItemsByType(type) {
 // Scraper
 const scrapeItems = async (config) => {
   try {
-    logger.info(`scraping ${config.type} items...`);
-    logger.debug(`clearing ${filterItemsByType(config.type).length} ${config.type} items...`);
-    db.data.libraryItems = db.data.libraryItems.filter(item => item.type !== config.type);
-    await db.write();
-
-    logger.debug(`getting ${config.type} items...`);
+    logger.info(`getting ${config.type} items...`);
     const response = await fetch(config.fetchUrl);
     const data = await response.text();
     
@@ -120,34 +115,40 @@ const scrapeItems = async (config) => {
     const script = $(config.scriptValue).text();
     const scriptData = JSON.parse(script);
 
-    logger.debug(`saving ${config.type} items...`);
+    logger.debug(`updating ${config.type} items...`);
     for (const itemId in scriptData.entities.bibs) {
       const item = scriptData.entities.bibs[itemId];
-      db.data.libraryItems.push({
-        id: item.id,
-        type: config.type,
-        title: item.briefInfo.title,
-        subtitle: item.briefInfo.subtitle,
-        publicationDate: item.briefInfo.publicationDate,
-        format: item.briefInfo.format,
-        edition: item.briefInfo.edition,
-        description: item.briefInfo.description,
-        url: `https://wccls.bibliocommons.com/v2/record/${item.id}`
-      });
+      const existingItem = db.data.libraryItems.find(libraryItem => libraryItem.id === itemId);
+      if (existingItem) {
+        existingItem.updateDate = Math.floor(Date.now() / 1000);
+      } else {
+        db.data.libraryItems.push({
+          id: item.id,
+          type: config.type,
+          title: item.briefInfo.title,
+          subtitle: item.briefInfo.subtitle,
+          publicationYear: item.briefInfo.publicationDate,
+          format: item.briefInfo.format,
+          edition: item.briefInfo.edition,
+          description: item.briefInfo.description,
+          url: `https://wccls.bibliocommons.com/v2/record/${item.id}`,
+          creatDate: Math.floor(Date.now() / 1000),
+          updateDate: Math.floor(Date.now() / 1000)
+        });
+      }
     }
     await db.write();
-    logger.debug(`${filterItemsByType(config.type).length} ${config.type} items saved.`);
+    logger.debug(`${filterItemsByType(config.type).length} ${config.type} items updated.`);
+    
     let filteredWishListItems, messageText = [];
-
     if(config.type === 'available now'){
-      // filter items based on wish list and send email if there are any
+      // filter items based on wish list and notify date is yesterday, then send email if there are any
       filteredWishListItems = filterItemsByType(config.type)
-        .filter(item => db.data.wishListItems.some(wishListItem => item.title.toLowerCase().includes(wishListItem.toLowerCase())));
+        .filter(item => db.data.wishListItems.some(wishListItem => item.title.toLowerCase().includes(wishListItem.toLowerCase())) &&
+          (!item.notifyDate || new Date(item.notifyDate*1000) < new Date(Date.now() - 86400000)));
 
-      logger.info(`found ${filteredWishListItems.length} wish list items ${config.type}.`);
       if(filteredWishListItems.length !== 0){
-        logger.info(`sending email for ${filteredWishListItems.length} ${config.type} items...`);
-      
+        logger.info(`getting availability for ${filteredWishListItems.length} ${config.type} items...`);
         for (const item of filteredWishListItems) {
           const response = await fetch(availabilityUrl(item.id));
           const data = await response.text();
@@ -161,15 +162,18 @@ const scrapeItems = async (config) => {
 
           const dbItem = db.data.libraryItems.find(libraryItem => libraryItem.id === item.id);
           dbItem.locations = availableLocations;
+          dbItem.notifyDate = Math.floor(Date.now() / 1000);
           await db.write();
 
-          messageText.push(`${item.title} :: ${item.url} :: available at ${item.locations.join(', ')}`);
+          messageText.push(`${item.title} :: ${item.url} :: ${item.locations.join(', ')}`);
         }
       }
     }
     else if (config.type === 'on order'){
-      for (const item of db.data.libraryItems.filter(libraryItem => libraryItem.type === 'on order')) {
+      for (const item of db.data.libraryItems.filter(libraryItem => libraryItem.type === 'on order' && !libraryItem.notifyDate)) {
         messageText.push(`${item.title} :: ${item.url}`);
+        item.notifyDate = Math.floor(Date.now() / 1000);
+        await db.write();
       }
     }
 
@@ -179,8 +183,11 @@ const scrapeItems = async (config) => {
         subject: `Alert: ${config.type}`,
         text: `${messageText.join('\n\n')}`,
       };
-      logger.debug(message);
+
       sendEmail(message);
+      logger.info(`sending email for ${messageText.length} ${config.type} items...`);
+    } else {
+      logger.info(`no items ${config.type}.`);
     }
 
     return config.type === 'on order' 
@@ -218,6 +225,7 @@ app.get('/available-now', async (req, res) => {
 app.get('/add-to-wish-list/:keywords', async (req, res) => {
   db.data.wishListItems.push(req.params.keywords);
   await db.write();
+  logger.info(`added ${req.params.keywords} to wish list.`);
   res.send(`Added ${req.params.keywords} to wish list.`);
 });
 
@@ -225,10 +233,12 @@ app.get('/remove-from-wish-list/:keywords', async (req, res) => {
   // TODO add validation if item is not in wish list, possibly return list of items in wish list
   db.data.wishListItems = db.data.wishListItems.filter(item => item.toLowerCase() !== req.params.keywords.toLowerCase());
   await db.write();
+  logger.info(`removed ${req.params.keywords} from wish list.`);
   res.send(`Removed ${req.params.keywords} from wish list.`);
 });
 
 app.get('/wish-list', async (req, res) => {
+  logger.info(`sending wish list.`);
   res.send(db.data.wishListItems);
 });
 
