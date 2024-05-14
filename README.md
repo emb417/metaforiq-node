@@ -28,18 +28,21 @@ aka Libowski-bot, automating a couple frequent activities:
 ## Tech Stack
 
 1. nodejs - js runtime
+1. dotenv
 1. express - http server
 1. [lowdb](https://github.com/typicode/lowdb) - database
 1. [pino](https://github.com/pinojs/pino) - logger
 1. [node-fetch](https://github.com/node-fetch/node-fetch/tree/2.x#readme) - request lib
 1. [cheerio](https://github.com/cheeriojs/cheerio) - html parser
 1. [node-cron](https://github.com/node-cron/node-cron) - cron scheduler
+1. [nodemailer](https://github.com/nodemailer/nodemailer) - email transport library
 
 ## Primary Capabilities
 
 ### Find On-Order Blurays in past 7 days
 
 1. Scape items from [newly acquired page](https://wccls.bibliocommons.com/v2/search?query=nw%3A%5B0%20TO%20180%5D&searchType=bl&sort=NEWLY_ACQUIRED&suppress=true&title_key=all_newly_acquired&f_FORMAT=BLURAY&f_ON_ORDER=true&f_NEWLY_ACQUIRED=PAST_7_DAYS)
+1. Send email at noon and 6pm with all on order items, if there are any new ones
 1. manually invoke with this endpoint `/on-order`
 
 ### Check for Now Available New Release Blurays
@@ -61,20 +64,3 @@ aka Libowski-bot, automating a couple frequent activities:
 
 1. using node-cron to periodically scrape library items
 1. send emails if wish list items are available now or send all on order items
-
-## To Do List
-
-### CRUD Keywords for matching against wish list
-
-1. reserve and notify
-1. ui for managing keywords
-1. ui for reviewing list and reserving
-
-### Reserve On-Order
-
-1. Login to account and get session cookie from response
-1. Use session cookie to form url and POST to URL (TBD)
-
-### email templates
-
-1. make emails prettier
