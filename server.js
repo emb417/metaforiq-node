@@ -222,6 +222,18 @@ app.get('/available-now', async (req, res) => {
   await itemsHandler(req, res, availableConfig);
 });
 
+app.get('/all-best-sellers', async (req, res) => {
+  const items = filterItemsByType('available now');
+  logger.info(`found ${items.length} best seller items.`);
+  res.send(items);
+});
+
+app.get('/all-on-order', async (req, res) => {
+  const items = filterItemsByType('on order');
+  logger.info(`found ${items.length} on order items.`);
+  res.send(items);
+});
+
 app.get('/add-to-wish-list/:keywords', async (req, res) => {
   db.data.wishListItems.push(req.params.keywords);
   await db.write();
@@ -230,11 +242,15 @@ app.get('/add-to-wish-list/:keywords', async (req, res) => {
 });
 
 app.get('/remove-from-wish-list/:keywords', async (req, res) => {
-  // TODO add validation if item is not in wish list, possibly return list of items in wish list
-  db.data.wishListItems = db.data.wishListItems.filter(item => item.toLowerCase() !== req.params.keywords.toLowerCase());
-  await db.write();
-  logger.info(`removed ${req.params.keywords} from wish list.`);
-  res.send(`Removed ${req.params.keywords} from wish list.`);
+  const index = db.data.wishListItems.findIndex(item => item.toLowerCase() === req.params.keywords.toLowerCase());
+  if (index === -1) {
+    res.status(404).send(`${req.params.keywords} not found in wish list. Wish list items are: ${db.data.wishListItems.join(', ')}.`);
+  } else {
+    db.data.wishListItems.splice(index, 1);
+    await db.write();
+    logger.info(`removed ${req.params.keywords} from wish list.`);
+    res.send(`Removed ${req.params.keywords} from wish list.`);
+  }
 });
 
 app.get('/wish-list', async (req, res) => {
