@@ -8,6 +8,7 @@ import { JSONFilePreset } from 'lowdb/node'
 import pino from 'pino';
 import cron from 'node-cron';
 import nodemailer from 'nodemailer';
+import { log } from 'console';
 
 const app = express();
 const port = 8008;
@@ -145,29 +146,42 @@ const scrapeItems = async (config) => {
       // filter items based on wish list and notify date is yesterday, then send email if there are any
       filteredWishListItems = filterItemsByType(config.type)
         .filter(item => db.data.wishListItems.some(wishListItem => item.title.toLowerCase().includes(wishListItem.toLowerCase())) &&
-          (!item.notifyDate || new Date(item.notifyDate*1000) < new Date(Date.now() - 86400000)));
+          (!item.notifyDate || new Date(item.notifyDate * 1000) < new Date(Date.now() - 0 /* hour = 3600000*/ /* day = 8640000*/)));
 
       if(filteredWishListItems.length !== 0){
-        logger.info(`getting availability for ${filteredWishListItems.length} ${config.type} items...`);
+        logger.info(`getting availability for ${filteredWishListItems.length} ${config.type} wish list items...`);
         for (const item of filteredWishListItems) {
+          logger.debug(`\n############################ ${item.title} ############################`);
           const response = await fetch(availabilityUrl(item.id));
           const data = await response.text();
           const bibItemsData = JSON.parse(data).entities.bibItems;
+          logger.debug(`parsing ${Object.values(bibItemsData).length} ${config.type} bibItems...`);
           logger.trace(bibItemsData);
 
-const availableBibItems = Object.values(bibItemsData).filter(bibItem => bibItem.availability.status === 'AVAILABLE' &&
+          const availableBibItems = Object.values(bibItemsData).filter(bibItem => bibItem.availability.status === 'AVAILABLE' &&
             bibItem.collection.endsWith('Not Holdable') &&
             !bibItem.callNumber.startsWith('4K'));
-          const availableLocations = availableBibItems
-            .filter(bibItem => locations.some(location => location.name === bibItem.branch.name))
-            .map(bibItem => bibItem.branch.name);
+          logger.debug(`filtered down to ${availableBibItems.length} AVAILABLE, NOT HOLDABLE, NOT 4K bibItems...`);
+          logger.trace(availableBibItems);
 
-          const dbItem = db.data.libraryItems.find(libraryItem => libraryItem.id === item.id);
-          dbItem.locations = availableLocations;
-          dbItem.notifyDate = Math.floor(Date.now() / 1000);
-          await db.write();
+          if (availableBibItems.length > 0) {
+            const availableLocations = availableBibItems
+              .filter(bibItem => locations.some(location => location.name === bibItem.branch.name))
+              .map(bibItem => bibItem.branch.name);
+            logger.debug(`found ${availableLocations.length} ${config.type} locations...`);
+            logger.trace(availableLocations);
 
-          messageText.push(`${item.title} :: ${item.url} :: ${item.locations.join(', ')}`);
+            if (availableLocations.length > 0) {
+              // update db
+              const dbItem = db.data.libraryItems.find(libraryItem => libraryItem.id === item.id);
+              dbItem.locations = availableLocations;
+              dbItem.notifyDate = Math.floor(Date.now() / 1000);
+              await db.write();
+              logger.debug(`db locations updated: ${item.locations.join(', ')}.`);
+
+              messageText.push(`${item.title} :: ${item.url} :: ${item.locations.join(', ')}`);
+            }
+          }
         }
       }
     }
@@ -179,15 +193,15 @@ const availableBibItems = Object.values(bibItemsData).filter(bibItem => bibItem.
       }
     }
 
-    logger.debug(messageText);
     if (messageText.length > 0) {
       const message = {
         subject: `Alert: ${config.type}`,
         text: `${messageText.join('\n\n')}`,
       };
 
-      sendEmail(message);
       logger.info(`sending email for ${messageText.length} ${config.type} items...`);
+      logger.trace(messageText);
+      sendEmail(message);
     } else {
       logger.info(`no items ${config.type}.`);
     }
