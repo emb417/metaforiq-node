@@ -155,7 +155,9 @@ const scrapeItems = async (config) => {
           const bibItemsData = JSON.parse(data).entities.bibItems;
           logger.trace(bibItemsData);
 
-          const availableBibItems = Object.values(bibItemsData).filter(bibItem => bibItem.availability.status === 'AVAILABLE');
+const availableBibItems = Object.values(bibItemsData).filter(bibItem => bibItem.availability.status === 'AVAILABLE' &&
+            bibItem.collection.endsWith('Not Holdable') &&
+            !bibItem.callNumber.startsWith('4K'));
           const availableLocations = availableBibItems
             .filter(bibItem => locations.some(location => location.name === bibItem.branch.name))
             .map(bibItem => bibItem.branch.name);
