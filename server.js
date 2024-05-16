@@ -146,7 +146,7 @@ const scrapeItems = async (config) => {
       // filter items based on wish list and notify date is yesterday, then send email if there are any
       filteredWishListItems = filterItemsByType(config.type)
         .filter(item => db.data.wishListItems.some(wishListItem => item.title.toLowerCase().includes(wishListItem.toLowerCase())) &&
-          (!item.notifyDate || new Date(item.notifyDate * 1000) < new Date(Date.now() - 0 /* hour = 3600000*/ /* day = 8640000*/)));
+          (!item.notifyDate || new Date(item.notifyDate * 1000) < new Date(Date.now() - process.env.NOTIFY_DELAY)));
 
       if(filteredWishListItems.length !== 0){
         logger.info(`getting availability for ${filteredWishListItems.length} ${config.type} wish list items...`);
