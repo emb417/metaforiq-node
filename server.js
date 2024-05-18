@@ -8,7 +8,6 @@ import { JSONFilePreset } from 'lowdb/node'
 import pino from 'pino';
 import cron from 'node-cron';
 import nodemailer from 'nodemailer';
-import { log } from 'console';
 
 const app = express();
 const port = 8008;
