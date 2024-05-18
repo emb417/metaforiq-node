@@ -141,7 +141,7 @@ const scrapeItems = async (config) => {
     await db.write();
     logger.debug(`${filterItemsByType(config.type).length} ${config.type} items updated.`);
     
-    let filteredWishListItems, messageText = [];
+    let filteredWishListItems = [], availableWishListItems = [], messageText = [];
     if(config.type === 'available now'){
       // filter items based on wish list and notify date is yesterday, then send email if there are any
       filteredWishListItems = filterItemsByType(config.type)
@@ -176,6 +176,7 @@ const scrapeItems = async (config) => {
               const dbItem = db.data.libraryItems.find(libraryItem => libraryItem.id === item.id);
               dbItem.locations = availableLocations;
               dbItem.notifyDate = Math.floor(Date.now() / 1000);
+              availableWishListItems.push(dbItem);
               await db.write();
               logger.debug(`db locations updated: ${item.locations.join(', ')}.`);
 
@@ -208,7 +209,7 @@ const scrapeItems = async (config) => {
 
     return config.type === 'on order' 
     ? db.data.libraryItems.filter(item => item.type === 'on order')
-    : filteredWishListItems;
+    : availableWishListItems;
   } catch (error) {
     logger.error(error);
     throw new Error(`Server Error - Check Logs`);
