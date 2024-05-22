@@ -7,7 +7,7 @@ import { load as cheerioLoad } from 'cheerio';
 import { JSONFilePreset } from 'lowdb/node'
 import pino from 'pino';
 import cron from 'node-cron';
-import nodemailer from 'nodemailer';
+import discord from 'discord.js';
 
 const app = express();
 const port = 8008;
@@ -44,35 +44,11 @@ if (!fs.existsSync(dbPath)) {
 const db = await JSONFilePreset('db.json',{});
 await db.read();
 
-function sendEmail(message) {
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      type: 'OAuth2',
-      user: process.env.MAIL_FROM,
-      pass: process.env.MAIL_PASSWORD,
-      clientId: process.env.OAUTH_CLIENTID,
-      clientSecret: process.env.OAUTH_CLIENT_SECRET,
-      refreshToken: process.env.OAUTH_REFRESH_TOKEN
-    }
-  });
-
-  let mailOptions = {
-    from: process.env.MAIL_FROM,
-    to: process.env.MAIL_TO,
-    subject: '',
-    text: ''
-  };
-
-  mailOptions = { ...mailOptions, ...message };
-
-  transporter.sendMail(mailOptions, function(err, data) {
-    if (err) {
-      logger.error(err);
-    } else {
-      logger.info("email sent.");
-    }
-  });
+function sendDiscordNotification(content) {
+  const webhookClient = new discord.WebhookClient({ 'url': process.env.DISCORD_WEBHOOK_URL });
+  webhookClient.send({ content: content })
+      .then(() => logger.info('Discord notification sent!'))
+      .catch((error) => logger.error('Failed to send Discord notification:', error));
 }
 
 // Scraper utils
@@ -142,7 +118,7 @@ const scrapeItems = async (config) => {
     
     let filteredWishListItems = [], availableWishListItems = [], messageText = [];
     if(config.type === 'available now'){
-      // filter items based on wish list and notify date is yesterday, then send email if there are any
+      // filter items based on wish list and notify date is yesterday, then send notification if there are any
       filteredWishListItems = filterItemsByType(config.type)
         .filter(item => db.data.wishListItems.some(wishListItem => item.title.toLowerCase().includes(wishListItem.toLowerCase())) &&
           (!item.notifyDate || new Date(item.notifyDate * 1000) < new Date(Date.now() - process.env.NOTIFY_DELAY)));
@@ -194,14 +170,11 @@ const scrapeItems = async (config) => {
     }
 
     if (messageText.length > 0) {
-      const message = {
-        subject: `Alert: ${config.type}`,
-        text: `${messageText.join('\n\n')}`,
-      };
+      const message = `${config.type} alert!!!\n\n${messageText.join('\n\n')}`;
 
-      logger.info(`sending email for ${messageText.length} ${config.type} items...`);
+      logger.info(`sending notification for ${messageText.length} ${config.type} items...`);
       logger.trace(messageText);
-      sendEmail(message);
+      sendDiscordNotification(message);
     } else {
       logger.info(`no items ${config.type}.`);
     }
