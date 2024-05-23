@@ -155,7 +155,7 @@ const scrapeItems = async (config) => {
               await db.write();
               logger.debug(`db locations updated: ${item.locations.join(', ')}.`);
 
-              messageText.push(`${item.title} :: ${item.url} :: ${item.locations.join(', ')}`);
+              messageText.push(`${item.title}\n${item.locations.join(', ')}\n${item.url}`);
             }
           }
         }
@@ -163,7 +163,7 @@ const scrapeItems = async (config) => {
     }
     else if (config.type === 'on order'){
       for (const item of db.data.libraryItems.filter(libraryItem => libraryItem.type === 'on order' && !libraryItem.notifyDate)) {
-        messageText.push(`${item.title} :: ${item.url}`);
+        messageText.push(`${item.title}\n${item.url}`);
         item.notifyDate = Math.floor(Date.now() / 1000);
         await db.write();
       }
