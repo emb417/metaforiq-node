@@ -108,7 +108,7 @@ const scrapeItems = async (config) => {
           edition: item.briefInfo.edition,
           description: item.briefInfo.description,
           url: `https://wccls.bibliocommons.com/v2/record/${item.id}`,
-          creatDate: Math.floor(Date.now() / 1000),
+          createDate: Math.floor(Date.now() / 1000),
           updateDate: Math.floor(Date.now() / 1000)
         });
       }
