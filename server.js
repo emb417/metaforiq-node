@@ -118,10 +118,8 @@ const scrapeItems = async (config) => {
     
     let filteredWishListItems = [], availableWishListItems = [], messageText = [];
     if(config.type === 'available now'){
-      // filter items based on wish list and notify date is yesterday, then send notification if there are any
       filteredWishListItems = filterItemsByType(config.type)
-        .filter(item => db.data.wishListItems.some(wishListItem => item.title.toLowerCase().includes(wishListItem.toLowerCase())) &&
-          (!item.notifyDate || new Date(item.notifyDate * 1000) < new Date(Date.now() - process.env.NOTIFY_DELAY)));
+        .filter(item => db.data.wishListItems.some(wishListItem => item.title.toLowerCase().includes(wishListItem.toLowerCase())));
 
       if(filteredWishListItems.length !== 0){
         logger.info(`getting availability for ${filteredWishListItems.length} ${config.type} wish list items...`);
@@ -140,22 +138,26 @@ const scrapeItems = async (config) => {
           logger.trace(availableBibItems);
 
           if (availableBibItems.length > 0) {
-            const availableLocations = availableBibItems
-              .filter(bibItem => locations.some(location => location.name === bibItem.branch.name))
-              .map(bibItem => bibItem.branch.name);
-            logger.debug(`found ${availableLocations.length} ${config.type} locations...`);
-            logger.trace(availableLocations);
+            for (const bibItem of availableBibItems) {
+              const location = locations.find(location => location.name === bibItem.branch.name);
+              if (location) {
+                const dbItem = db.data.libraryItems.find(libraryItem => libraryItem.id === item.id);
+                if (!dbItem.availability) {
+                  dbItem.availability = {};
+                }
+                if (!dbItem.availability[location.code]) {
+                  dbItem.availability[location.code] = {};
+                }
+                if (!dbItem.availability[location.code].notifyDate || new Date(dbItem.availability[location.code].notifyDate * 1000) < new Date(Date.now() - process.env.NOTIFY_DELAY)) {
+                  dbItem.availability[location.code].notifyDate = Math.floor(Date.now() / 1000);
+                  dbItem.availability[location.code].location = location.name;
+                  availableWishListItems.push(dbItem);
+                  await db.write();
+                  logger.debug(`db availability location updated: ${dbItem.availability[location.code].location}.`);
 
-            if (availableLocations.length > 0) {
-              // update db
-              const dbItem = db.data.libraryItems.find(libraryItem => libraryItem.id === item.id);
-              dbItem.locations = availableLocations;
-              dbItem.notifyDate = Math.floor(Date.now() / 1000);
-              availableWishListItems.push(dbItem);
-              await db.write();
-              logger.debug(`db locations updated: ${item.locations.join(', ')}.`);
-
-              messageText.push(`${item.title}\n${item.locations.join(', ')}\n${item.url}`);
+                  messageText.push(`${item.title}\n${location.name}\n${item.url}`);
+                }
+              }
             }
           }
         }
