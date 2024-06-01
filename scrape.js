@@ -75,6 +75,8 @@ const scrapeItems = async (config) => {
         });
       }
     }
+    // Filter out any items that haven't been updated in the past 7 days
+    db.data.libraryItems = db.data.libraryItems.filter(item => Math.floor(Date.now() / 1000) - item.updateDate <= 7 * 24 * 60 * 60);    
     await db.write();
     logger.debug(
       `${filterItemsByType(config.type).length} ${config.type} items updated.`
