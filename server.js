@@ -99,7 +99,8 @@ app.get('/add-to-wish-list/:keywords', async (req, res) => {
 app.get('/remove-from-wish-list/:keywords', async (req, res) => {
   const index = db.data.wishListItems.findIndex(item => item.toLowerCase() === req.params.keywords.toLowerCase());
   if (index === -1) {
-    res.status(404).send(`${req.params.keywords} not found in wish list. Wish list items are: ${db.data.wishListItems.join(', ')}.`);
+    const listItems = db.data.wishListItems.length === 0 ? 'empty' : db.data.wishListItems.join(', ');
+    res.status(404).send(`${req.params.keywords} not found in wish list. Wish list items are ${listItems}.`);
   } else {
     db.data.wishListItems.splice(index, 1);
     await db.write();
