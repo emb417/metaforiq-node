@@ -177,7 +177,7 @@ const scrapeItems = async (config) => {
     }
 
     if (messageText.length > 0) {
-      const message = `${config.type} alert!!!\n\n${messageText.join('\n\n')}`;
+      const message = `${config.type} alert!!!\n${messageText.join('\n\n')}`;
 
       logger.info(`sending notification for ${messageText.length} ${config.type} items...`);
       logger.trace(messageText);
