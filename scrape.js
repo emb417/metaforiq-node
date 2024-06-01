@@ -15,11 +15,13 @@ const logger = pino({
   },
 });
 
+const db = await JSONFilePreset("db.json", {});
+
 const availabilityUrl = (itemId) => {
   return `https://gateway.bibliocommons.com/v2/libraries/wccls/bibs/${itemId}/availability?locale=en-US`;
 };
 
-export function filterItemsByType(db, type) {
+export function filterItemsByType(type) {
     return db.data.libraryItems.filter(item => item.type === type);
 }
 
@@ -48,7 +50,6 @@ const scrapeItems = async (config) => {
     const script = $(config.scriptValue).text();
     const scriptData = JSON.parse(script);
 
-    const db = await JSONFilePreset("db.json", {});
     logger.debug(`updating ${config.type} items...`);
     for (const itemId in scriptData.entities.bibs) {
       const item = scriptData.entities.bibs[itemId];
@@ -80,14 +81,14 @@ const scrapeItems = async (config) => {
     );
     await db.write();
     logger.debug(
-      `${filterItemsByType(db, config.type).length} ${config.type} items updated.`
+      `${filterItemsByType(config.type).length} ${config.type} items updated.`
     );
 
     let filteredWishListItems = [],
       availableWishListItems = [],
       messageText = [];
     if (config.type === "available now") {
-      filteredWishListItems = filterItemsByType(db, config.type).filter((item) =>
+      filteredWishListItems = filterItemsByType(config.type).filter((item) =>
         db.data.wishListItems.some((wishListItem) =>
           item.title.toLowerCase().includes(wishListItem.toLowerCase())
         )
