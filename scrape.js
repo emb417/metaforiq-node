@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
 import { load as cheerioLoad } from "cheerio";
-import { JSONFilePreset } from "lowdb/node";
+import { JSONFilePreset } from 'lowdb/node'
 import pino from "pino";
 import discord from 'discord.js';
 
@@ -15,14 +15,11 @@ const logger = pino({
   },
 });
 
-const db = await JSONFilePreset("db.json", {});
-await db.read();
-
 const availabilityUrl = (itemId) => {
   return `https://gateway.bibliocommons.com/v2/libraries/wccls/bibs/${itemId}/availability?locale=en-US`;
 };
 
-export function filterItemsByType(type) {
+export function filterItemsByType(db, type) {
     return db.data.libraryItems.filter(item => item.type === type);
 }
 
@@ -51,6 +48,7 @@ const scrapeItems = async (config) => {
     const script = $(config.scriptValue).text();
     const scriptData = JSON.parse(script);
 
+    const db = await JSONFilePreset("db.json", {});
     logger.debug(`updating ${config.type} items...`);
     for (const itemId in scriptData.entities.bibs) {
       const item = scriptData.entities.bibs[itemId];
@@ -76,17 +74,20 @@ const scrapeItems = async (config) => {
       }
     }
     // Filter out any items that haven't been updated in the past 7 days
-    db.data.libraryItems = db.data.libraryItems.filter(item => Math.floor(Date.now() / 1000) - item.updateDate <= 7 * 24 * 60 * 60);    
+    db.data.libraryItems = db.data.libraryItems.filter(
+      item =>
+        Math.floor(Date.now() / 1000) - item.updateDate <= 7 * 24 * 60 * 60
+    );
     await db.write();
     logger.debug(
-      `${filterItemsByType(config.type).length} ${config.type} items updated.`
+      `${filterItemsByType(db, config.type).length} ${config.type} items updated.`
     );
 
     let filteredWishListItems = [],
       availableWishListItems = [],
       messageText = [];
     if (config.type === "available now") {
-      filteredWishListItems = filterItemsByType(config.type).filter((item) =>
+      filteredWishListItems = filterItemsByType(db, config.type).filter((item) =>
         db.data.wishListItems.some((wishListItem) =>
           item.title.toLowerCase().includes(wishListItem.toLowerCase())
         )

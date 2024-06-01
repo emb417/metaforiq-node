@@ -40,7 +40,6 @@ if (!fs.existsSync(dbPath)) {
 }
 
 const db = await JSONFilePreset('db.json',{});
-await db.read();
 
 const availableConfig = {
   type: 'available now',
@@ -90,6 +89,7 @@ app.get('/all-on-order', async (req, res) => {
 });
 
 app.get('/add-to-wish-list/:keywords', async (req, res) => {
+  await db.read();
   db.data.wishListItems.push(req.params.keywords);
   await db.write();
   logger.info(`added ${req.params.keywords} to wish list.`);
@@ -97,6 +97,7 @@ app.get('/add-to-wish-list/:keywords', async (req, res) => {
 });
 
 app.get('/remove-from-wish-list/:keywords', async (req, res) => {
+  await db.read();
   const index = db.data.wishListItems.findIndex(item => item.toLowerCase() === req.params.keywords.toLowerCase());
   if (index === -1) {
     const listItems = db.data.wishListItems.length === 0 ? 'empty' : db.data.wishListItems.join(', ');
@@ -111,6 +112,7 @@ app.get('/remove-from-wish-list/:keywords', async (req, res) => {
 
 app.get('/wish-list', async (req, res) => {
   logger.info(`sending wish list.`);
+  await db.read();
   res.send(db.data.wishListItems);
 });
 
