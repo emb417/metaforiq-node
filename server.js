@@ -118,6 +118,17 @@ const scrapeItems = async (config) => {
       item =>
         Math.floor(Date.now() / 1000) - item.updateDate <= 7 * 24 * 60 * 60
     );
+    db.data.libraryItems.forEach(item => {
+      if (typeof item.availability === 'object' && !Array.isArray(item.availability)) {
+        const availabilityKeys = Object.keys(item.availability);
+        availabilityKeys.forEach(key => {
+          const availability = item.availability[key];
+          if (Math.floor(Date.now() / 1000) - availability.notifyDate > 24 * 60 * 60) {
+            delete item.availability[key];
+          }
+        });
+      }
+    });
     await db.write();
     logger.debug(`${filterItemsByType(config.type).length} ${config.type} items updated.`);
     
