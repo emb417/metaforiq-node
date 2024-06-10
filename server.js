@@ -89,7 +89,13 @@ const scrapeItems = async (config) => {
     logger.debug(`parsing ${config.type} items...`);
     const $ = cheerioLoad(data);
     const script = $(config.scriptValue).text();
-    const scriptData = JSON.parse(script);
+    let scriptData;
+    try {
+      scriptData = JSON.parse(script);
+    } catch (error) {
+      logger.error(`failed to parse script data: ${error.message}`);
+      return [];
+    }
 
     logger.debug(`updating ${config.type} items...`);
     for (const itemId in scriptData.entities.bibs) {
