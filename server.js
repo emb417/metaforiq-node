@@ -208,7 +208,6 @@ const scrapeItems = async (config) => {
     : availableWishListItems;
   } catch (error) {
     logger.error(error);
-    throw new Error(`Server Error - Check Logs`);
   }
 };
 
@@ -226,7 +225,28 @@ const itemsHandler = async (req, res, config) => {
   }
 }
 
-// App routes
+// Middleware
+app.use(express.json()) // for parsing application/json
+
+// Routes
+app.post('/auth', (req, res) => {
+  logger.info(`authenticating...`);
+  logger.debug(req.body);
+  let userId = null;
+  if (req.body && Object.keys(req.body).length > 0) {
+    const user = db.data.users.find(user => user.username === req.body.username && user.password === req.body.password);
+    userId = user ? user.id : null;
+  }
+  if (userId !== null) {
+    logger.info(`authenticated!`);
+    logger.debug(`user id: ${userId}`);
+    res.send({ userId: userId });
+  } else {
+    logger.info(`unauthenticated.`);
+    res.status(401).send( {} );
+  }
+});
+
 app.get('/on-order', async (req, res) => {
   await itemsHandler(req, res, onOrderConfig);
 });
@@ -247,32 +267,37 @@ app.get('/all-on-order', async (req, res) => {
   res.send(items);
 });
 
-app.get('/add-to-wish-list/:keywords', async (req, res) => {
-  db.data.wishListItems.push(req.params.keywords);
-  await db.write();
-  logger.info(`added ${req.params.keywords} to wish list.`);
-  res.send(`Added ${req.params.keywords} to wish list.`);
-});
-
-app.get('/remove-from-wish-list/:keywords', async (req, res) => {
-  const index = db.data.wishListItems.findIndex(item => item.toLowerCase() === req.params.keywords.toLowerCase());
-  if (index === -1) {
-    res.status(404).send(`${req.params.keywords} not found in wish list. Wish list items are: ${db.data.wishListItems.join(', ')}.`);
-  } else {
-    db.data.wishListItems.splice(index, 1);
-    await db.write();
-    logger.info(`removed ${req.params.keywords} from wish list.`);
-    res.send(`Removed ${req.params.keywords} from wish list.`);
-  }
-});
-
 app.get('/wish-list', async (req, res) => {
   logger.info(`sending wish list.`);
   res.send(db.data.wishListItems);
 });
 
+app.post('/wish-list', async (req, res) => {
+  logger.info(`adding wish list item...`);
+  logger.debug(req.body);
+  db.data.wishListItems.push(req.body.title);
+  await db.write();
+  logger.info(`added ${req.body.title} to wish list.`);
+  res.send(db.data.wishListItems);
+});
+
+app.delete('/wish-list', async (req, res) => {
+  logger.info(`removing wish list item...`);
+  logger.debug(req.body);
+  const index = db.data.wishListItems.findIndex(item => item.toLowerCase() === req.body.title.toLowerCase());
+  if (index === -1) {
+    res.status(404).send(`${req.body.title} not found in wish list. Wish list items are: ${db.data.wishListItems.join(', ')}.`);
+  } else {
+    db.data.wishListItems.splice(index, 1);
+    await db.write();
+    logger.info(`removed ${req.body.title} from wish list.`);
+    res.send(db.data.wishListItems);
+  }
+});
+
 app.get('*', (req, res) => {
   logger.info( `The Dude does not abide!` );
+  logger.debug( req );
   res.send( `The Dude does not abide!` );
 });
 
