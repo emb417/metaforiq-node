@@ -231,7 +231,6 @@ app.use(express.json()) // for parsing application/json
 // Routes
 app.post('/auth', (req, res) => {
   logger.info(`authenticating...`);
-  logger.debug(req.body);
   let userId = null;
   if (req.body && Object.keys(req.body).length > 0) {
     const user = db.data.users.find(user => user.username === req.body.username && user.password === req.body.password);
