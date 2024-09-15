@@ -1,5 +1,7 @@
 # metaforiq-node
 
+1. auth using local db based on username and password
+
 1. aka Libowski-bot, automating a couple frequent activities:
 
     * looking for items recently ordered by the library to be first to reserve for a shorter wait once the library gets the item
