@@ -1,9 +1,9 @@
-# wccls-bot
+# metaforiq-node
 
-aka Libowski-bot, automating a couple frequent activities:
+1. aka Libowski-bot, automating a couple frequent activities:
 
-1. looking for items recently ordered by the library to be first to reserve for a shorter wait once the library gets the item
-1. checking for "best seller" aka "new release" items currently on the shelf
+    * looking for items recently ordered by the library to be first to reserve for a shorter wait once the library gets the item
+    * checking for "best seller" aka "new release" items currently on the shelf
 
 ## Getting Started
 
