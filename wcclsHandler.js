@@ -26,17 +26,73 @@ const dbPath = path.join(__dirname, "db.json");
 if (!fs.existsSync(dbPath)) {
   fs.writeFileSync(dbPath, '{ "libraryItems": [], "wishListItems": [] }');
 }
-const db = await JSONFilePreset("db.json", {});
-await db.read();
 
-function filterItemsByType(type) {
-  return db.data.libraryItems.filter((item) => item.type === type);
+export async function getBestSellers(req, res) {
+  const db = await JSONFilePreset("db.json", {});
+  await db.read();
+  logger.info(`found ${db.data.libraryItems.filter((item) => item.type === "available now").length} best seller items.`);
+  res.send(db.data.libraryItems.filter((item) => item.type === "available now"));
+};
+
+export async function getOnOrder(req, res){
+  const db = await JSONFilePreset("db.json", {});
+  await db.read();
+  logger.info(`found ${db.data.libraryItems.filter((item) => item.type === "on order").length} on order items.`);
+  res.send(db.data.libraryItems.filter((item) => item.type === "on order"));
+};
+
+export async function getWishListItems(req, res){
+  logger.info(`sending wish list.`);
+  const db = await JSONFilePreset("db.json", {});
+  await db.read();
+  res.send(db.data.wishListItems);
+};
+
+export async function addWishListItem(req, res) {
+  logger.info(`adding wish list item...`);
+  logger.debug(req.body);
+  const db = await JSONFilePreset("db.json", {});
+  await db.read();
+  db.data.wishListItems.push(req.body.title);
+  await db.write();
+  logger.info(`added ${req.body.title} to wish list.`);
+  await db.read();
+  res.send(db.data.wishListItems);
+}
+
+export async function removeWishListItem(req, res) {
+  logger.info(`removing wish list item...`);
+  logger.debug(req.body);
+  const db = await JSONFilePreset("db.json", {});
+  await db.read();
+  const index = db.data.wishListItems.findIndex(
+    (item) => item.toLowerCase() === req.body.title.toLowerCase()
+  );
+  if (index === -1) {
+    res
+      .status(404)
+      .send(
+        `${
+          req.body.title
+        } not found in wish list. Wish list items are: ${db.data.wishListItems.join(
+          ", "
+        )}.`
+      );
+  } else {
+    db.data.wishListItems.splice(index, 1);
+    await db.write();
+    logger.info(`removed ${req.body.title} from wish list.`);
+    await db.read();
+    res.send(db.data.wishListItems);
+  }
 }
 
 // Scraper
-export default async function scrapeItems(config) {
+export async function scrapeItems(config) {
   try {
     logger.info(`getting ${config.type} items...`);
+    const db = await JSONFilePreset("db.json", {});
+    await db.read();
 
     const response = await fetch(config.fetchUrl);
     const data = await response.text();
@@ -99,15 +155,17 @@ export default async function scrapeItems(config) {
       }
     });
     await db.write();
+    const loggerItems = db.data.libraryItems.filter((item) => item.type === config.type);
     logger.debug(
-      `${filterItemsByType(config.type).length} ${config.type} items updated.`
+      `${loggerItems.length} ${config.type} items updated.`
     );
 
     let filteredWishListItems = [],
       availableWishListItems = [],
       messageText = [];
     if (config.type === "available now") {
-      filteredWishListItems = filterItemsByType(config.type).filter((item) =>
+      const availableItems = db.data.libraryItems.filter((item) => item.type === config.type);
+      filteredWishListItems = availableItems.filter((item) =>
         db.data.wishListItems.some((wishListItem) =>
           item.title.toLowerCase().includes(wishListItem.toLowerCase())
         )
@@ -213,4 +271,4 @@ export default async function scrapeItems(config) {
   } catch (error) {
     logger.error(error);
   }
-};
+}
