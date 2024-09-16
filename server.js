@@ -7,8 +7,9 @@ import { load as cheerioLoad } from "cheerio";
 import { JSONFilePreset } from "lowdb/node";
 import pino from "pino";
 import cron from "node-cron";
-import sendDiscordNotification from "./discordHandler.js";
+import auth from "./authHandler.js";
 import { locations, availableConfig, onOrderConfig, availabilityUrl } from "./configs.js";
+import sendDiscordNotification from "./discordHandler.js";
 
 const app = express();
 const port = 8008;
@@ -249,24 +250,7 @@ app.use(express.json()); // for parsing application/json
 
 // Routes
 app.post("/auth", (req, res) => {
-  logger.info(`authenticating...`);
-  let userId = null;
-  if (req.body && Object.keys(req.body).length > 0) {
-    const user = db.data.users.find(
-      (user) =>
-        user.username === req.body.username &&
-        user.password === req.body.password
-    );
-    userId = user ? user.id : null;
-  }
-  if (userId !== null) {
-    logger.info(`authenticated!`);
-    logger.debug(`user id: ${userId}`);
-    res.send({ userId: userId });
-  } else {
-    logger.info(`unauthenticated.`);
-    res.status(401).send({});
-  }
+  auth(req, res);
 });
 
 app.get("/on-order", async (req, res) => {
