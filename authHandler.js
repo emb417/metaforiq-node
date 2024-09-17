@@ -1,6 +1,4 @@
 import "dotenv/config";
-import fs from "fs";
-import path from "path";
 import { JSONFilePreset } from "lowdb/node";
 import pino from "pino";
 
@@ -14,14 +12,6 @@ const logger = pino({
     },
   },
 });
-
-// Set up database
-const __dirname = path.resolve();
-const dbPath = path.join(__dirname, "db.json");
-
-if (!fs.existsSync(dbPath)) {
-  fs.writeFileSync(dbPath, '{ "libraryItems": [], "wishListItems": [] }');
-}
 
 export default async function auth(req, res) {
   logger.info(`authenticating...`);

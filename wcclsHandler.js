@@ -1,6 +1,4 @@
 import "dotenv/config";
-import fs from "fs";
-import path from "path";
 import fetch from "node-fetch";
 import { load as cheerioLoad } from "cheerio";
 import { JSONFilePreset } from "lowdb/node";
@@ -18,14 +16,6 @@ const logger = pino({
     },
   },
 });
-
-// Set up database
-const __dirname = path.resolve();
-const dbPath = path.join(__dirname, "db.json");
-
-if (!fs.existsSync(dbPath)) {
-  fs.writeFileSync(dbPath, '{ "libraryItems": [], "wishListItems": [] }');
-}
 
 export async function getItems(req, res, config) {
   try {
