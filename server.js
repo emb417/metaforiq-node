@@ -5,6 +5,7 @@ import cron from "node-cron";
 import auth from "./authHandler.js";
 import { availableConfig, onOrderConfig } from "./configs.js";
 import {
+  getItems,
   getBestSellers,
   getOnOrder,
   getWishListItems,
@@ -37,20 +38,6 @@ cron.schedule("0 12,18 * * *", () => {
   scrapeItems(onOrderConfig);
 });
 
-// Request handler
-const itemsHandler = async (req, res, config) => {
-  try {
-    const items = await scrapeItems(config);
-    if (items.length === 0) {
-      res.send(`No wish list items ${config.type}.`);
-    } else {
-      res.send(items);
-    }
-  } catch (error) {
-    res.status(500).send(error.message);
-  }
-};
-
 // Middleware
 app.use(express.json()); // for parsing application/json
 
@@ -60,11 +47,11 @@ app.post("/auth", async (req, res) => {
 });
 
 app.get("/on-order", async (req, res) => {
-  await itemsHandler(req, res, onOrderConfig);
+  await getItems(req, res, onOrderConfig);
 });
 
 app.get("/available-now", async (req, res) => {
-  await itemsHandler(req, res, availableConfig);
+  await getItems(req, res, availableConfig);
 });
 
 app.get("/all-best-sellers", async (req, res) => {

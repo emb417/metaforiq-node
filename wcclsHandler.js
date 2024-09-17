@@ -27,26 +27,50 @@ if (!fs.existsSync(dbPath)) {
   fs.writeFileSync(dbPath, '{ "libraryItems": [], "wishListItems": [] }');
 }
 
+export async function getItems(req, res, config) {
+  try {
+    const items = await scrapeItems(config);
+    if (items.length === 0) {
+      res.send(`No wish list items ${config.type}.`);
+    } else {
+      res.send(items);
+    }
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+}
+
 export async function getBestSellers(req, res) {
   const db = await JSONFilePreset("db.json", {});
   await db.read();
-  logger.info(`found ${db.data.libraryItems.filter((item) => item.type === "available now").length} best seller items.`);
-  res.send(db.data.libraryItems.filter((item) => item.type === "available now"));
-};
+  logger.info(
+    `found ${
+      db.data.libraryItems.filter((item) => item.type === "available now")
+        .length
+    } best seller items.`
+  );
+  res.send(
+    db.data.libraryItems.filter((item) => item.type === "available now")
+  );
+}
 
-export async function getOnOrder(req, res){
+export async function getOnOrder(req, res) {
   const db = await JSONFilePreset("db.json", {});
   await db.read();
-  logger.info(`found ${db.data.libraryItems.filter((item) => item.type === "on order").length} on order items.`);
+  logger.info(
+    `found ${
+      db.data.libraryItems.filter((item) => item.type === "on order").length
+    } on order items.`
+  );
   res.send(db.data.libraryItems.filter((item) => item.type === "on order"));
-};
+}
 
-export async function getWishListItems(req, res){
+export async function getWishListItems(req, res) {
   logger.info(`sending wish list.`);
   const db = await JSONFilePreset("db.json", {});
   await db.read();
   res.send(db.data.wishListItems);
-};
+}
 
 export async function addWishListItem(req, res) {
   logger.info(`adding wish list item...`);
@@ -155,16 +179,18 @@ export async function scrapeItems(config) {
       }
     });
     await db.write();
-    const loggerItems = db.data.libraryItems.filter((item) => item.type === config.type);
-    logger.debug(
-      `${loggerItems.length} ${config.type} items updated.`
+    const loggerItems = db.data.libraryItems.filter(
+      (item) => item.type === config.type
     );
+    logger.debug(`${loggerItems.length} ${config.type} items updated.`);
 
     let filteredWishListItems = [],
       availableWishListItems = [],
       messageText = [];
     if (config.type === "available now") {
-      const availableItems = db.data.libraryItems.filter((item) => item.type === config.type);
+      const availableItems = db.data.libraryItems.filter(
+        (item) => item.type === config.type
+      );
       filteredWishListItems = availableItems.filter((item) =>
         db.data.wishListItems.some((wishListItem) =>
           item.title.toLowerCase().includes(wishListItem.toLowerCase())
