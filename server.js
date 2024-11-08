@@ -4,6 +4,7 @@ import pino from "pino";
 import cron from "node-cron";
 import auth from "./authHandler.js";
 import { availableConfig, onOrderConfig } from "./configs.js";
+import getPinballData from "./pinballHandler.js";
 import {
   getItems,
   getBestSellers,
@@ -48,6 +49,10 @@ app.post("/auth", async (req, res) => {
 
 app.get("/on-order", async (req, res) => {
   await getItems(req, res, onOrderConfig);
+});
+
+app.get("/pinball", async (req, res) => {
+  await getPinballData(req, res);
 });
 
 app.get("/available-now", async (req, res) => {

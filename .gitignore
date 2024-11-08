@@ -7,8 +7,9 @@ node_modules
 # Ignore dotenv file
 .env
 
-# Ignore database file
+# Ignore database files
 db.json
+pinball.json
 
 # Ignore IDE specific files
 .vscode
