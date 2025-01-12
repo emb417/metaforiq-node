@@ -1,5 +1,5 @@
 export const locations = [
-  // { code: 9, name: 'Beaverton City Library' },
+  { code: 9, name: 'Beaverton City Library' },
   { code: 29, name: "Tigard Public Library" },
   { code: 31, name: "Tualatin Public Library" },
   { code: 39, name: "Beaverton Murray Scholls" },

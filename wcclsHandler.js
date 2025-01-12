@@ -140,6 +140,7 @@ export async function scrapeItems(config) {
           format: item.briefInfo.format,
           edition: item.briefInfo.edition,
           description: item.briefInfo.description,
+          image: item.briefInfo.jacket.large,
           url: `https://wccls.bibliocommons.com/v2/record/${item.id}`,
           createDate: Math.floor(Date.now() / 1000),
           updateDate: Math.floor(Date.now() / 1000),
