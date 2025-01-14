@@ -182,74 +182,72 @@ export async function scrapeItems(config) {
       const availableItems = db.data.libraryItems.filter(
         (item) => item.type === config.type
       );
-      filteredWishListItems = availableItems.filter((item) =>
-        db.data.wishListItems.some((wishListItem) =>
-          item.title.toLowerCase().includes(wishListItem.toLowerCase())
-        )
+      logger.info(
+        `getting availability for ${availableItems.length} ${config.type} items...`
       );
-
-      if (filteredWishListItems.length !== 0) {
-        logger.info(
-          `getting availability for ${filteredWishListItems.length} ${config.type} wish list items...`
+      for (const item of availableItems) {
+        logger.debug(
+          `\n############################ ${item.title} ############################`
         );
-        for (const item of filteredWishListItems) {
-          logger.debug(
-            `\n############################ ${item.title} ############################`
-          );
-          const response = await fetch(availabilityUrl(item.id));
-          const data = await response.text();
-          const bibItemsData = JSON.parse(data).entities.bibItems;
-          logger.debug(
-            `parsing ${Object.values(bibItemsData).length} ${
-              config.type
-            } bibItems...`
-          );
-          logger.trace(bibItemsData);
+        const response = await fetch(availabilityUrl(item.id));
+        const data = await response.text();
+        const bibItemsData = JSON.parse(data).entities.bibItems;
+        logger.debug(
+          `parsing ${Object.values(bibItemsData).length} ${
+            config.type
+          } bibItems...`
+        );
+        logger.trace(bibItemsData);
 
-          const availableBibItems = Object.values(bibItemsData).filter(
-            (bibItem) =>
-              bibItem.availability.status === "AVAILABLE" &&
-              bibItem.collection.endsWith("Not Holdable") &&
-              !bibItem.callNumber.startsWith("4K")
-          );
-          logger.debug(
-            `filtered down to ${availableBibItems.length} AVAILABLE, NOT HOLDABLE, NOT 4K bibItems...`
-          );
-          logger.trace(availableBibItems);
+        const availableBibItems = Object.values(bibItemsData).filter(
+          (bibItem) =>
+            bibItem.availability.status === "AVAILABLE" &&
+            bibItem.collection.endsWith("Not Holdable") &&
+            !bibItem.callNumber.startsWith("4K")
+        );
+        logger.debug(
+          `filtered down to ${availableBibItems.length} AVAILABLE, NOT HOLDABLE, NOT 4K bibItems...`
+        );
+        logger.trace(availableBibItems);
 
-          if (availableBibItems.length > 0) {
-            for (const bibItem of availableBibItems) {
-              const location = locations.find(
-                (location) => location.name === bibItem.branch.name
+        if (availableBibItems.length > 0) {
+          for (const bibItem of availableBibItems) {
+            const location = locations.find(
+              (location) => location.name === bibItem.branch.name
+            );
+            if (location) {
+              const dbItem = db.data.libraryItems.find(
+                (libraryItem) => libraryItem.id === item.id
               );
-              if (location) {
-                const dbItem = db.data.libraryItems.find(
-                  (libraryItem) => libraryItem.id === item.id
+              if (!dbItem.availability) {
+                dbItem.availability = {};
+              }
+              if (!dbItem.availability[location.code]) {
+                dbItem.availability[location.code] = {};
+              }
+              if (
+                !dbItem.availability[location.code].notifyDate ||
+                new Date(
+                  dbItem.availability[location.code].notifyDate * 1000
+                ) < new Date(Date.now() - process.env.NOTIFY_DELAY)
+              ) {
+                dbItem.availability[location.code].notifyDate = Math.floor(
+                  Date.now() / 1000
                 );
-                if (!dbItem.availability) {
-                  dbItem.availability = {};
-                }
-                if (!dbItem.availability[location.code]) {
-                  dbItem.availability[location.code] = {};
-                }
-                if (
-                  !dbItem.availability[location.code].notifyDate ||
-                  new Date(
-                    dbItem.availability[location.code].notifyDate * 1000
-                  ) < new Date(Date.now() - process.env.NOTIFY_DELAY)
-                ) {
-                  dbItem.availability[location.code].notifyDate = Math.floor(
-                    Date.now() / 1000
-                  );
-                  dbItem.availability[location.code].location = location.name;
-                  availableWishListItems.push(dbItem);
-                  await db.write();
-                  logger.debug(
-                    `db availability location updated: ${
-                      dbItem.availability[location.code].location
-                    }.`
-                  );
+                dbItem.availability[location.code].location = location.name;
+                availableWishListItems.push(dbItem);
+                await db.write();
+                logger.debug(
+                  `db availability location updated: ${
+                    dbItem.availability[location.code].location
+                  }.`
+                );
 
+                if (
+                  db.data.wishListItems.some((wishListItem) =>
+                    item.title.toLowerCase().includes(wishListItem.toLowerCase())
+                  )
+                ) {
                   messageText.push(
                     `${item.title}\n${location.name}\n${item.url}`
                   );
