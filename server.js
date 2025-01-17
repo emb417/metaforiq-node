@@ -29,13 +29,13 @@ const logger = pino({
 });
 
 // Schedule the execution of available now every 15 minutes from 10:00am to 6:00pm
-cron.schedule("0,15,30,45 10-18 * * *", () => {
-  scrapeItems(availableConfig);
+cron.schedule("1,15,30,45 10-18 * * *", async () => {
+  await scrapeItems(availableConfig);
 });
 
 // Schedule the execution of on order every day at noon and 6pm
-cron.schedule("0 12,18 * * *", () => {
-  scrapeItems(onOrderConfig);
+cron.schedule("0 12,18 * * *", async () => {
+  await scrapeItems(onOrderConfig);
 });
 
 // Middleware
