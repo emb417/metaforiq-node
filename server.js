@@ -8,11 +8,9 @@ import {
   getItems,
   getBestSellers,
   getOnOrder,
-  getWishListItems,
-  addWishListItem,
-  removeWishListItem,
   scrapeItems,
 } from "./wcclsHandler.js";
+import { getWishListItems, addWishListItem, removeWishListItem } from "./wishlistHandler.js";
 
 const app = express();
 const port = 8008;
@@ -29,12 +27,12 @@ const logger = pino({
 });
 
 // Schedule the execution of available now every 15 minutes from 10:00am to 6:00pm
-cron.schedule("1,15,30,45 10-18 * * *", async () => {
+cron.schedule(process.env.AVAILABILITY_SCHEDULE || "1,15,30,45 10-18 * * *", async () => {
   await scrapeItems(availableConfig);
 });
 
 // Schedule the execution of on order every day at noon and 6pm
-cron.schedule("0 12,18 * * *", async () => {
+cron.schedule(process.env.ON_ORDER_SCHEDULE || "0 12,18 * * *", async () => {
   await scrapeItems(onOrderConfig);
 });
 
