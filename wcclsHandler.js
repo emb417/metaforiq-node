@@ -94,11 +94,15 @@ export async function refreshItems(config) {
     const db = await JSONFilePreset("./db.json", {});
     await db.read();
     const refreshedTitles = refreshTitles(libraryData, config);
+    // Filter out any items that haven't been updated in the past 7 days
+    db.data.libraryItems = db.data.libraryItems.filter(
+      (item) =>
+        Math.floor(Date.now() / 1000) - item.updateDate <= 7 * 24 * 60 * 60
+    );
     // Filter out existing library items of the opposite type
     const filteredLibraryItems = db.data.libraryItems.filter(
       (item) => item.type !== config.type
     );
-
     // Merge refreshedTitles with the filtered library items
     db.data.libraryItems = [
       ...filteredLibraryItems,
