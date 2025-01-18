@@ -17,10 +17,10 @@ export async function getBestSellers(req, res) {
   const db = await JSONFilePreset("./db.json", {});
   await db.read();
   logger.info(
-    `found ${
+    `${
       db.data.libraryItems.filter((item) => item.type === "available now")
       .length
-    } best seller items.`
+    } db best seller items found.`
   );
   res.send(
     db.data.libraryItems.filter((item) => item.type === "available now")
@@ -31,9 +31,9 @@ export async function getOnOrder(req, res) {
   const db = await JSONFilePreset("./db.json", {});
   await db.read();
   logger.info(
-    `found ${
+    `${
       db.data.libraryItems.filter((item) => item.type === "on order").length
-    } on order items.`
+    } db on order items found.`
   );
   res.send(db.data.libraryItems.filter((item) => item.type === "on order"));
 }
