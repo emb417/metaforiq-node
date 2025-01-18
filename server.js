@@ -5,7 +5,7 @@ import cron from "node-cron";
 import auth from "./authHandler.js";
 import { availableConfig, onOrderConfig } from "./configs.js";
 import { getBestSellers, getOnOrder } from "./libraryHandler.js";
-import { getItems, scrapeItems } from "./wcclsHandler.js";
+import { getItems, refreshItems } from "./wcclsHandler.js";
 import {
   getWishListItems,
   addWishListItem,
@@ -30,13 +30,13 @@ const logger = pino({
 cron.schedule(
   process.env.AVAILABILITY_SCHEDULE || "1,15,30,45 10-18 * * *",
   async () => {
-    await scrapeItems(availableConfig);
+    await refreshItems(availableConfig);
   }
 );
 
 // Schedule the execution of on order every day at noon and 6pm
 cron.schedule(process.env.ON_ORDER_SCHEDULE || "0 12,18 * * *", async () => {
-  await scrapeItems(onOrderConfig);
+  await refreshItems(onOrderConfig);
 });
 
 // Middleware

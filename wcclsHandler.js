@@ -17,227 +17,213 @@ const logger = pino({
   },
 });
 
-export async function getItems(req, res, config) {
+async function getLibraryData(config) {
+  const response = await fetch(config.fetchUrl);
+  const data = await response.text();
+  const $ = cheerioLoad(data);
+  const script = $(config.scriptValue).text();
+  let libraryData;
   try {
-    const items = await scrapeItems(config);
-    if (items.length === 0) {
-      res.send(`No wish list items ${config.type}.`);
-    } else {
-      res.send(items);
-    }
+    libraryData = JSON.parse(script);
   } catch (error) {
-    res.status(500).send(error.message);
+    logger.error(`failed to parse script data: ${error.message}`);
+    return [];
   }
+  return libraryData;
 }
 
-export async function getBestSellers(req, res) {
-  const db = await JSONFilePreset("./db.json", {});
-  await db.read();
-  logger.info(
-    `found ${
-      db.data.libraryItems.filter((item) => item.type === "available now")
-        .length
-    } best seller items.`
-  );
-  res.send(
-    db.data.libraryItems.filter((item) => item.type === "available now")
-  );
+function refreshTitles(libraryData, config) {
+  const refreshedTitles = [];
+  for (const itemId in libraryData.entities.bibs) {
+    const item = libraryData.entities.bibs[itemId];
+    refreshedTitles.push({
+      id: item.id,
+      type: config.type,
+      title: item.briefInfo.title,
+      subtitle: item.briefInfo.subtitle,
+      publicationYear: item.briefInfo.publicationDate,
+      format: item.briefInfo.format,
+      edition: item.briefInfo.edition,
+      description: item.briefInfo.description,
+      image: item.briefInfo.jacket.large,
+      url: `https://wccls.bibliocommons.com/v2/record/${item.id}`,
+      updateDate: Math.floor(Date.now() / 1000),
+    });
+  }
+  logger.debug(`${refreshedTitles.length} titles refreshed.`);
+
+  return refreshedTitles;
 }
 
-export async function getOnOrder(req, res) {
-  const db = await JSONFilePreset("./db.json", {});
-  await db.read();
-  logger.info(
-    `found ${
-      db.data.libraryItems.filter((item) => item.type === "on order").length
-    } on order items.`
-  );
-  res.send(db.data.libraryItems.filter((item) => item.type === "on order"));
+async function getAvailableBibItems(availableTitles) {
+  logger.info(`getting availability for ${availableTitles.length} titles...`);
+  const availableBibItems = [];
+  for (const item of availableTitles) {
+    try {
+      const response = await fetch(availabilityUrl(item.id));
+      const data = await response.text();
+      const bibItemsData = JSON.parse(data).entities.bibItems;
+      const filteredBibItems = Object.values(bibItemsData).filter(
+        (bibItem) =>
+          bibItem.availability.status === "AVAILABLE" &&
+          bibItem.collection.endsWith("Not Holdable") &&
+          !bibItem.callNumber.startsWith("4K")
+      );
+      logger.debug(
+        `${filteredBibItems.length} of ${
+          Object.values(bibItemsData).length
+        } bibItems found for ${item.title}.`
+      );
+
+      if (filteredBibItems.length > 0) {
+        filteredBibItems.forEach((bibItem) =>
+          availableBibItems.push({ ...bibItem, id: item.id })
+        );
+      }
+    } catch (error) {
+      logger.error(`failed to parse bibItems for ${item.id}: ${error.message}`);
+    }
+  }
+  return availableBibItems;
 }
 
-// Scraper
-export async function scrapeItems(config) {
+export async function refreshItems(config) {
   try {
-    logger.info(`getting ${config.type} items...`);
+    logger.info(`refreshing ${config.type} titles...`);
+    const libraryData = await getLibraryData(config);
     const db = await JSONFilePreset("./db.json", {});
     await db.read();
-
-    const response = await fetch(config.fetchUrl);
-    const data = await response.text();
-
-    logger.debug(`parsing ${config.type} items...`);
-    const $ = cheerioLoad(data);
-    const script = $(config.scriptValue).text();
-    let scriptData;
-    try {
-      scriptData = JSON.parse(script);
-    } catch (error) {
-      logger.error(`failed to parse script data: ${error.message}`);
-      return [];
-    }
-
-    logger.debug(`updating ${config.type} items...`);
-    for (const itemId in scriptData.entities.bibs) {
-      const item = scriptData.entities.bibs[itemId];
-      const existingItem = db.data.libraryItems.find(
-        (libraryItem) => libraryItem.id === itemId
-      );
-      if (existingItem) {
-        existingItem.updateDate = Math.floor(Date.now() / 1000);
-      } else {
-        db.data.libraryItems.push({
-          id: item.id,
-          type: config.type,
-          title: item.briefInfo.title,
-          subtitle: item.briefInfo.subtitle,
-          publicationYear: item.briefInfo.publicationDate,
-          format: item.briefInfo.format,
-          edition: item.briefInfo.edition,
-          description: item.briefInfo.description,
-          image: item.briefInfo.jacket.large,
-          url: `https://wccls.bibliocommons.com/v2/record/${item.id}`,
-          createDate: Math.floor(Date.now() / 1000),
-          updateDate: Math.floor(Date.now() / 1000),
-        });
-      }
-    }
-    // Filter out any items that haven't been updated in the past 7 days
-    db.data.libraryItems = db.data.libraryItems.filter(
-      (item) =>
-        Math.floor(Date.now() / 1000) - item.updateDate <= 7 * 24 * 60 * 60
+    const refreshedTitles = refreshTitles(libraryData, config);
+    // Filter out existing library items of the opposite type
+    const filteredLibraryItems = db.data.libraryItems.filter(
+      (item) => item.type !== config.type
     );
-    db.data.libraryItems.forEach((item) => {
-      if (
-        typeof item.availability === "object" &&
-        !Array.isArray(item.availability)
-      ) {
-        const availabilityKeys = Object.keys(item.availability);
-        availabilityKeys.forEach((key) => {
-          const availability = item.availability[key];
-          if (
-            Math.floor(Date.now() / 1000) - availability.notifyDate >
-            24 * 60 * 60
-          ) {
-            delete item.availability[key];
-          }
-        });
-      }
-    });
+
+    // Merge refreshedTitles with the filtered library items
+    db.data.libraryItems = [
+      ...filteredLibraryItems,
+      ...refreshedTitles.map((refreshedTitle) => {
+        const libraryItem = db.data.libraryItems.find(
+          (libraryItem) => libraryItem.id === refreshedTitle.id
+        );
+        if (libraryItem) {
+          return { ...libraryItem, ...refreshedTitle };
+        }
+
+        refreshedTitle.createDate = Math.floor(Date.now() / 1000);
+        return refreshedTitle;
+      }),
+    ];
+
     await db.write();
-    const loggerItems = db.data.libraryItems.filter(
-      (item) => item.type === config.type
-    );
-    logger.debug(`${loggerItems.length} ${config.type} items updated.`);
 
-    let filteredWishListItems = [],
-      availableWishListItems = [],
+    let titlesWithAvailability = [],
+      onOrderTitles = [],
       messageText = [];
     if (config.type === "available now") {
       const availableItems = db.data.libraryItems.filter(
         (item) => item.type === config.type
       );
-      logger.info(
-        `getting availability for ${availableItems.length} ${config.type} items...`
-      );
-      for (const item of availableItems) {
-        logger.debug(
-          `\n############################ ${item.title} ############################`
-        );
-        const response = await fetch(availabilityUrl(item.id));
-        const data = await response.text();
-        const bibItemsData = JSON.parse(data).entities.bibItems;
-        logger.debug(
-          `parsing ${Object.values(bibItemsData).length} ${
-            config.type
-          } bibItems...`
-        );
-        logger.trace(bibItemsData);
+      const availableBibItems = await getAvailableBibItems(availableItems);
+      if (availableBibItems.length > 0) {
+        availableBibItems.forEach((bibItem) => {
+          const location = locations.find(
+            (location) => location.name === bibItem.branch.name
+          );
+          if (!location) return;
 
-        const availableBibItems = Object.values(bibItemsData).filter(
-          (bibItem) =>
-            bibItem.availability.status === "AVAILABLE" &&
-            bibItem.collection.endsWith("Not Holdable") &&
-            !bibItem.callNumber.startsWith("4K")
-        );
-        logger.debug(
-          `filtered down to ${availableBibItems.length} AVAILABLE, NOT HOLDABLE, NOT 4K bibItems...`
-        );
-        logger.trace(availableBibItems);
+          const dbItem = db.data.libraryItems.find(
+            (item) => item.id === bibItem.id
+          );
 
-        if (availableBibItems.length > 0) {
-          for (const bibItem of availableBibItems) {
-            const location = locations.find(
-              (location) => location.name === bibItem.branch.name
-            );
-            if (location) {
-              const dbItem = db.data.libraryItems.find(
-                (libraryItem) => libraryItem.id === item.id
+          if (!dbItem.availability) {
+            dbItem.availability = {};
+          }
+
+          const availability = dbItem.availability[location.code] || {};
+          const notifyDelayExceeded =
+            !availability.notifyDate ||
+            new Date(availability.notifyDate * 1000) <
+              new Date(Date.now() - process.env.NOTIFY_DELAY);
+
+          if (notifyDelayExceeded) {
+            logger.trace(`${dbItem.title} now available at ${location.name}.`);
+            availability.notifyDate = Math.floor(Date.now() / 1000);
+            availability.location = location.name;
+            titlesWithAvailability.push(dbItem);
+
+            if (
+              db.data.wishListItems.some((wishListItem) =>
+                dbItem.title.toLowerCase().includes(wishListItem.toLowerCase())
+              )
+            ) {
+              messageText.push(
+                `${dbItem.title}\n${location.name}\n${dbItem.url}`
               );
-              if (!dbItem.availability) {
-                dbItem.availability = {};
-              }
-              if (!dbItem.availability[location.code]) {
-                dbItem.availability[location.code] = {};
-              }
-              if (
-                !dbItem.availability[location.code].notifyDate ||
-                new Date(
-                  dbItem.availability[location.code].notifyDate * 1000
-                ) < new Date(Date.now() - process.env.NOTIFY_DELAY)
-              ) {
-                dbItem.availability[location.code].notifyDate = Math.floor(
-                  Date.now() / 1000
-                );
-                dbItem.availability[location.code].location = location.name;
-                availableWishListItems.push(dbItem);
-                await db.write();
-                logger.debug(
-                  `db availability location updated: ${
-                    dbItem.availability[location.code].location
-                  }.`
-                );
-
-                if (
-                  db.data.wishListItems.some((wishListItem) =>
-                    item.title.toLowerCase().includes(wishListItem.toLowerCase())
-                  )
-                ) {
-                  messageText.push(
-                    `${item.title}\n${location.name}\n${item.url}`
-                  );
-                }
-              }
             }
           }
-        }
+
+          dbItem.availability[location.code] = availability;
+
+          const index = db.data.libraryItems.findIndex(
+            (item) => item.id === dbItem.id
+          );
+
+          if (index !== -1) {
+            db.data.libraryItems[index] = dbItem;
+          }
+        });
+
+        logger.debug(
+          `${titlesWithAvailability.length} titles with new availability found.`
+        );
+        logger.debug(`${messageText.length} availablity notifications...`);
       }
     } else if (config.type === "on order") {
-      for (const item of db.data.libraryItems.filter(
-        (libraryItem) =>
-          libraryItem.type === "on order" && !libraryItem.notifyDate
-      )) {
-        messageText.push(`${item.title}\n${item.url}`);
+      onOrderTitles = db.data.libraryItems.filter(
+        (item) => item.type === config.type
+      );
+      for (const item of onOrderTitles.filter((title) => !title.notifyDate)) {
         item.notifyDate = Math.floor(Date.now() / 1000);
-        await db.write();
+        messageText.push(`${item.title}\n${item.url}`);
       }
+      logger.debug(`sending ${messageText.length} notifications...`);
+
+      onOrderTitles.forEach((title) => {
+        const index = db.data.libraryItems.findIndex(
+          (item) => item.id === title.id
+        );
+
+        if (index !== -1) {
+          db.data.libraryItems[index] = title;
+        }
+      });
     }
+
+    await db.write();
 
     if (messageText.length > 0) {
       const message = `${config.type} alert!!!\n${messageText.join("\n\n")}`;
-
-      logger.info(
-        `sending notification for ${messageText.length} ${config.type} items...`
-      );
-      logger.trace(messageText);
       sendDiscordNotification(message);
     } else {
-      logger.info(`no items ${config.type}.`);
+      logger.info(`no new titles ${config.type}.`);
     }
 
-    return config.type === "on order"
-      ? db.data.libraryItems.filter((item) => item.type === "on order")
-      : availableWishListItems;
+    return config.type === "on order" ? onOrderTitles : titlesWithAvailability;
   } catch (error) {
     logger.error(error);
+  }
+}
+
+export async function getItems(req, res, config) {
+  try {
+    const items = await refreshItems(config);
+    if (items.length === 0) {
+      res.send(`No new titles ${config.type}.`);
+    } else {
+      res.send(items);
+    }
+  } catch (error) {
+    res.status(500).send(error.message);
   }
 }
