@@ -1,5 +1,5 @@
 export const locations = [
-  { code: 9, name: 'Beaverton City Library' },
+  { code: 9, name: "Beaverton City Library" },
   { code: 29, name: "Tigard Public Library" },
   { code: 31, name: "Tualatin Public Library" },
   { code: 39, name: "Beaverton Murray Scholls" },
@@ -8,7 +8,7 @@ export const locations = [
 export const availableConfig = {
   type: "available now",
   fetchUrl:
-    "https://wccls.bibliocommons.com/v2/search?custom_edit=false&query=anywhere%3A(%5B0%20TO%20180%5D)%20%20%20avlocation%3A%22%5B*%20TO%20*%5D%22%20collection%3A%22Best%20Sellers%22%20formatcode%3A(BLURAY%20)&searchType=bl&suppress=true&f_STATUS=39%7C29%7C31&f_NEWLY_ACQUIRED=PAST_180_DAYS&locked=true",
+    "https://wccls.bibliocommons.com/v2/search?custom_edit=false&query=collection%3A%22Best%20Sellers%22%20formatcode%3A(BLURAY%20)&searchType=bl&suppress=true&locked=true&f_STATUS=9%7C39%7C29%7C31&f_NEWLY_ACQUIRED=PAST_180_DAYS",
   scriptValue: 'script[type="application/json"][data-iso-key="_0"]',
 };
 
