@@ -56,30 +56,24 @@ function refreshTitles(libraryData, config) {
 }
 
 async function getAvailableBibItems(availableTitles) {
-  logger.info(`getting availability for ${availableTitles.length} titles...`);
+  logger.info(`${availableTitles.length} available titles >> getting detailed availability data...`);
   const availableBibItems = [];
+  let counter = 1;
   for (const item of availableTitles) {
     try {
       const response = await fetch(availabilityUrl(item.id));
       const data = await response.text();
       const bibItemsData = JSON.parse(data).entities.bibItems;
-      const filteredBibItems = Object.values(bibItemsData).filter(
-        (bibItem) =>
-          bibItem.availability.status === "AVAILABLE" &&
-          bibItem.collection.endsWith("Not Holdable") &&
-          !bibItem.callNumber.startsWith("4K")
-      );
+      const availableBibItemsForTitle = Object.values(bibItemsData)
+        .filter((bibItem) => bibItem.availability.status === "AVAILABLE")
+        .map((bibItem) => ({ ...bibItem, id: item.id }));
       logger.debug(
-        `${filteredBibItems.length} of ${
+        `${counter}. ${availableBibItemsForTitle.length} of ${
           Object.values(bibItemsData).length
         } bibItems found for ${item.title}.`
       );
-
-      if (filteredBibItems.length > 0) {
-        filteredBibItems.forEach((bibItem) =>
-          availableBibItems.push({ ...bibItem, id: item.id })
-        );
-      }
+      availableBibItems.push(...availableBibItemsForTitle);
+      counter++;
     } catch (error) {
       logger.error(`failed to parse bibItems for ${item.id}: ${error.message}`);
     }
@@ -97,7 +91,7 @@ export async function refreshItems(config) {
     // Remove items that haven't been updated in the past 30 days
     db.data.libraryItems = db.data.libraryItems.filter(
       (item) =>
-        item.updateDate > Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60)
+        item.updateDate > Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60
     );
     // Segment other existing library items of the opposite type
     const otherExisitngLibraryItems = db.data.libraryItems.filter(
@@ -121,7 +115,7 @@ export async function refreshItems(config) {
 
     await db.write();
 
-    let titlesWithAvailability = [],
+    let newlyAvailable = [],
       onOrderTitles = [],
       messageText = [];
     if (config.type === "available now") {
@@ -154,7 +148,7 @@ export async function refreshItems(config) {
             logger.trace(`${dbItem.title} now available at ${location.name}.`);
             availability.notifyDate = Math.floor(Date.now() / 1000);
             availability.location = location.name;
-            titlesWithAvailability.push(dbItem);
+            newlyAvailable.push(dbItem);
 
             if (
               db.data.wishListItems.some((wishListItem) =>
@@ -179,7 +173,7 @@ export async function refreshItems(config) {
         });
 
         logger.debug(
-          `${titlesWithAvailability.length} titles with new availability found.`
+          `${newlyAvailable.length} newly available items found.`
         );
         logger.debug(`${messageText.length} availablity notifications...`);
       }
@@ -213,7 +207,7 @@ export async function refreshItems(config) {
       logger.info(`no new titles ${config.type}.`);
     }
 
-    return config.type === "on order" ? onOrderTitles : titlesWithAvailability;
+    return config.type === "on order" ? onOrderTitles : newlyAvailable;
   } catch (error) {
     logger.error(error);
   }
