@@ -1,0 +1,14 @@
+# node_modules and npm debug logs
+node_modules
+npm-debug.log
+
+# Build files
+.env
+.DS_Store
+
+# Git
+.git
+.gitignore
+
+# data
+db.json
