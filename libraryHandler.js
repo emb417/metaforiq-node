@@ -14,7 +14,7 @@ const logger = pino({
 });
 
 export async function getBestSellers(req, res) {
-  const db = await JSONFilePreset("/app/db.json", {});
+  const db = await JSONFilePreset("/app/data/db.json", {});
   await db.read();
   logger.info(
     `${
@@ -28,7 +28,7 @@ export async function getBestSellers(req, res) {
 }
 
 export async function getOnOrder(req, res) {
-  const db = await JSONFilePreset("/app/db.json", {});
+  const db = await JSONFilePreset("/app/data/db.json", {});
   await db.read();
   logger.info(
     `${

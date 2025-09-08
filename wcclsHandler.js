@@ -87,7 +87,7 @@ export async function refreshItems(config) {
   try {
     logger.info(`refreshing ${config.type} titles...`);
     const libraryData = await getLibraryData(config);
-    const db = await JSONFilePreset("/app/db.json", {});
+    const db = await JSONFilePreset("/app/data/db.json", {});
     await db.read();
     const refreshedTitles = refreshTitles(libraryData, config);
     // Remove items that haven't been updated in the past 30 days

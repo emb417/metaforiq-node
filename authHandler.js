@@ -16,7 +16,7 @@ const logger = pino({
 export default async function auth(req, res) {
   logger.info(`authenticating...`);
 
-  const db = await JSONFilePreset("/app/db.json", {});
+  const db = await JSONFilePreset("/app/data/db.json", {});
   await db.read();
 
   let userId = null;
