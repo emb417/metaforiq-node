@@ -14,6 +14,8 @@ COPY *.js ./
 # Stage 2: Create the final, minimal image
 FROM node:22-alpine
 
+ENV TZ="America/Los_Angeles"
+
 WORKDIR /app
 
 # Only copy the essential production files from the builder stage.
