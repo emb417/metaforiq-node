@@ -1,6 +1,6 @@
 {
   "name": "metaforiq-node",
-  "version": "4.3.7",
+  "version": "4.3.8",
   "description": "a node server to auth, interact with wccls website and discord, plus other web services",
   "main": "server.js",
   "type": "module",
