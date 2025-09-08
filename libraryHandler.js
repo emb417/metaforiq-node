@@ -14,12 +14,12 @@ const logger = pino({
 });
 
 export async function getBestSellers(req, res) {
-  const db = await JSONFilePreset("./db.json", {});
+  const db = await JSONFilePreset("/app/db.json", {});
   await db.read();
   logger.info(
     `${
       db.data.libraryItems.filter((item) => item.type === "available now")
-      .length
+        .length
     } db best seller items found.`
   );
   res.send(
@@ -28,7 +28,7 @@ export async function getBestSellers(req, res) {
 }
 
 export async function getOnOrder(req, res) {
-  const db = await JSONFilePreset("./db.json", {});
+  const db = await JSONFilePreset("/app/db.json", {});
   await db.read();
   logger.info(
     `${

@@ -15,7 +15,7 @@ const logger = pino({
 
 export async function getWishListItems(req, res) {
   logger.info(`sending wish list.`);
-  const db = await JSONFilePreset("./db.json", {});
+  const db = await JSONFilePreset("/app/db.json", {});
   await db.read();
   res.send(db.data.wishListItems);
 }
@@ -23,7 +23,7 @@ export async function getWishListItems(req, res) {
 export async function addWishListItem(req, res) {
   logger.info(`adding wish list item...`);
   logger.debug(req.body);
-  const db = await JSONFilePreset("./db.json", {});
+  const db = await JSONFilePreset("/app/db.json", {});
   await db.read();
   db.data.wishListItems.push(req.body.title);
   await db.write();
@@ -35,7 +35,7 @@ export async function addWishListItem(req, res) {
 export async function removeWishListItem(req, res) {
   logger.info(`removing wish list item...`);
   logger.debug(req.body);
-  const db = await JSONFilePreset("./db.json", {});
+  const db = await JSONFilePreset("/app/db.json", {});
   await db.read();
   const index = db.data.wishListItems.findIndex(
     (item) => item.toLowerCase() === req.body.title.toLowerCase()

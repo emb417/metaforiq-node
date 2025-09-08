@@ -56,7 +56,9 @@ function refreshTitles(libraryData, config) {
 }
 
 async function getAvailableBibItems(availableTitles) {
-  logger.info(`${availableTitles.length} available titles >> getting detailed availability data...`);
+  logger.info(
+    `${availableTitles.length} available titles >> getting detailed availability data...`
+  );
   const availableBibItems = [];
   let counter = 1;
   for (const item of availableTitles) {
@@ -85,7 +87,7 @@ export async function refreshItems(config) {
   try {
     logger.info(`refreshing ${config.type} titles...`);
     const libraryData = await getLibraryData(config);
-    const db = await JSONFilePreset("./db.json", {});
+    const db = await JSONFilePreset("/app/db.json", {});
     await db.read();
     const refreshedTitles = refreshTitles(libraryData, config);
     // Remove items that haven't been updated in the past 30 days
@@ -172,9 +174,7 @@ export async function refreshItems(config) {
           }
         });
 
-        logger.debug(
-          `${newlyAvailable.length} newly available items found.`
-        );
+        logger.debug(`${newlyAvailable.length} newly available items found.`);
         logger.debug(`${messageText.length} availablity notifications...`);
       }
     } else if (config.type === "on order") {
