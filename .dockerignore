@@ -1,14 +1,18 @@
-# node_modules and npm debug logs
+# Ignore node_modules
 node_modules
-npm-debug.log
 
-# Build files
-.env
-.DS_Store
-
-# Git
+# Ignore git files
 .git
 .gitignore
 
-# data
+# Ignore github files
+.github/
+
+# Ignore log files
+*.log
+
+# Ignore macOS specific files
+.DS_Store
+
+# Ignore data file
 db.json
