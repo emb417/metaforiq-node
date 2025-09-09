@@ -1,18 +1,18 @@
 # Stage 1: Build the application
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
 # Install only production dependencies to keep the final image small
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --omit=dev
 
 # Copy all JavaScript files from the root directory.
 # This ensures that the db.json file is not baked into the image.
 COPY *.js ./
 
 # Stage 2: Create the final, minimal image
-FROM node:22-alpine
+FROM node:24-alpine
 
 ENV TZ="America/Los_Angeles"
 
